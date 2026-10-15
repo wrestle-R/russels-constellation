@@ -1,0 +1,11 @@
+/local-docs/
+/next/node_modules/
+/next/.next/
+/next/.env*
+/next/data/private-spotify.json
+/next/data/
+/next/output/
+/next/*.tsbuildinfo
+.env*
+*.log
+.DS_Store
