@@ -9,3 +9,5 @@
 .env*
 *.log
 .DS_Store
+/next/test-results/
+/next/playwright-report/
