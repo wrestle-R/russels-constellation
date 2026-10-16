@@ -356,8 +356,8 @@ test("mobile star taps keep the background stable and suppress the native canvas
       });
       await page.waitForTimeout(100);
       expect(
-        await canvas.evaluate(
-          (el) => getComputedStyle(el).webkitTapHighlightColor,
+        await canvas.evaluate((el) =>
+          getComputedStyle(el).getPropertyValue("-webkit-tap-highlight-color"),
         ),
       ).toBe("rgba(0, 0, 0, 0)");
       expect(before.equals(await page.screenshot({ clip }))).toBe(true);
