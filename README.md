@@ -1,17 +1,27 @@
-# Russel’s constellation
+<p align="center">
+  <img src="next/app/icon.svg" width="64" height="64" alt="Russel’s constellation logo" />
+</p>
 
-A private, local-first song constellation built with Next.js and Three.js. Each dot is a song; songs by the same primary artist form connected groups within overlapping genre regions. Recorded listening events determine color depth.
+<h1 align="center">Russel’s constellation</h1>
 
-## Development
+<p align="center">My music, mapped in the stars.</p>
 
-```sh
-cd next
-npm install
-npm run dev
-```
+<p align="center">
+  <a href="https://russels-constellation.vercel.app/"><strong>Explore the constellation ↗</strong></a>
+</p>
 
-Open http://127.0.0.1:3000. The app reads a local snapshot and optional browser-stored history. It does not contact Spotify or external font services when opened, refreshed, or filtered. Snapshot/metadata refresh commands are manual-only tools.
+![Russel’s constellation: a field of song stars connected by artist, with overlapping genre colors.](docs/images/constellation.webp)
 
-Personal snapshots, credentials, screenshots, and local notes are excluded from Git. Without a local snapshot, the owner-approved public collection is shown. The all-time view has a name/fullscreen/theme top bar, on-canvas zoom controls, and a swipeable genre legend on phones.
+A personal music collection you can wander through. Every star is a song, every connection belongs to an artist, and every color leads to a different corner of the collection.
 
-[Lyra](https://github.com/RutvikGupta/lyra) informed the initial constellation and local-history concept; this project has its own renderer and data model.
+### Read the sky
+
+- **Stars are songs.** Tap or hover to reveal the song and artist.
+- **Lines connect an artist’s songs.** Small networks sit together inside overlapping genre regions.
+- **Colors follow genres.** Deeper shades reflect more recorded plays, where counts are available.
+
+### Take a look around
+
+Drag to orbit. Pinch or use **+ / −** to move closer. Swipe through genres on your phone, or hover to preview them on desktop. Switch between light and dark, or go fullscreen and let the music fill the view.
+
+<p align="center"><sub>Built with Next.js, React and Three.js.</sub></p>
