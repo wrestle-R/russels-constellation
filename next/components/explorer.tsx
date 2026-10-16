@@ -23,7 +23,7 @@ import {
   genreFor,
   genres,
   tracksForPeriod,
-  artistsForPeriod,
+  recordedPlayCounts,
   timeLabel,
 } from "../lib/music";
 import { buildConstellation } from "../lib/constellation";
@@ -49,6 +49,7 @@ export default function Explorer({
     [query, setQuery] = useState(""),
     [genre, setGenre] = useState("All genres"),
     [previewGenre, setPreviewGenre] = useState<string | null>(null),
+    [previewPeriod, setPreviewPeriod] = useState<Period | null>(null),
     [playlistId, setPlaylistId] = useState(""),
     [selected, setSelected] = useState(""),
     [mode, setMode] = useState<"3D" | "2D">("3D"),
@@ -90,67 +91,56 @@ export default function Explorer({
     window.addEventListener("keydown", key);
     return () => window.removeEventListener("keydown", key);
   }, []);
+  const effectivePeriod = previewPeriod ?? period;
+  const effectiveGenre = previewGenre ?? genre;
   const tracks = useMemo(
-    () => tracksForPeriod(collection, period),
-    [collection, period],
-  );
-  const artists = useMemo(
-    () =>
-      artistsForPeriod(collection, period).filter(
-        (a) => genreFor(a).name !== "Unclassified",
-      ),
-    [collection, period],
-  );
-  const ranking = useMemo(
-    () =>
-      period === "all"
-        ? collection.top.long_term?.artistIds || []
-        : collection.top[period]?.artistIds || [],
-    [collection.top, period],
+    () => tracksForPeriod(collection, effectivePeriod),
+    [collection, effectivePeriod],
   );
   const graph = useMemo(
-    () => buildConstellation(artists, tracks, ranking),
-    [artists, tracks, ranking],
+    () => buildConstellation(collection.artists, collection.tracks),
+    [collection],
   );
-  const playlistArtists = useMemo(() => {
+  const playCounts = useMemo(
+    () => recordedPlayCounts(collection, effectivePeriod),
+    [collection, effectivePeriod],
+  );
+  const countScope =
+    collection.source === "import"
+      ? "imported history"
+      : "recent snapshot only";
+  const candidates = useMemo(() => {
+    const periodIds = new Set(tracks.map((t) => t.id));
     const playlist = collection.playlists.find((p) => p.id === playlistId);
-    if (!playlist) return null;
-    const ids = new Set(playlist.trackIds);
-    return new Set(
-      collection.tracks
-        .filter((t) => ids.has(t.id))
-        .flatMap((t) => t.artistIds || []),
-    );
-  }, [collection, playlistId]);
-  const matches = useMemo(() => {
-    const q = query.toLowerCase().trim();
-    return artists.filter(
-      (a) =>
-        (genre === "All genres" || genreFor(a).name === genre) &&
-        (!playlistArtists || playlistArtists.has(a.id)) &&
+    const playlistIds = playlist ? new Set(playlist.trackIds) : null;
+    const q = query.trim().toLowerCase();
+    return graph.nodes.filter(
+      (n) =>
+        periodIds.has(n.id) &&
+        (!playlistIds || playlistIds.has(n.id)) &&
         (!q ||
-          a.name.toLowerCase().includes(q) ||
-          a.genres.some((g) => g.includes(q))),
+          [n.track.name, n.track.album, n.artist.name, ...n.artist.genres]
+            .join(" ")
+            .toLowerCase()
+            .includes(q)),
     );
-  }, [artists, genre, query, playlistArtists]);
-  const visible = useMemo(() => matches.map((a) => a.id), [matches]);
+  }, [tracks, graph, collection.playlists, playlistId, query]);
+  const matches = useMemo(
+    () =>
+      candidates.filter(
+        (n) => effectiveGenre === "All genres" || n.genre === effectiveGenre,
+      ),
+    [candidates, effectiveGenre],
+  );
+  const sceneVisible = useMemo(() => matches.map((n) => n.id), [matches]);
   const availableGenres = useMemo(
     () =>
       genres.filter(
         (g) =>
           g.name !== "Unclassified" &&
-          artists.some((a) => genreFor(a).name === g.name),
+          candidates.some((n) => n.genre === g.name),
       ),
-    [artists],
-  );
-  const sceneVisible = useMemo(
-    () =>
-      previewGenre
-        ? matches
-            .filter((a) => genreFor(a).name === previewGenre)
-            .map((a) => a.id)
-        : visible,
-    [previewGenre, matches, visible],
+    [candidates],
   );
   function act(type: SceneCommand["type"]) {
     setCommand((c) => ({ type, nonce: c.nonce + 1 }));
@@ -160,6 +150,8 @@ export default function Explorer({
     setGenre("All genres");
     setPlaylistId("");
     setSelected("");
+    setPreviewGenre(null);
+    setPreviewPeriod(null);
   }
   function open(which: typeof modal) {
     setError("");
@@ -211,10 +203,18 @@ export default function Explorer({
   return (
     <div className="constellation-app">
       <header className="topbar">
-        <a className="brand" href="/" aria-label="Play It Back home">
-          <span className="brand-mark">▸_</span>
+        <a className="brand" href="/" aria-label="Russell’s constellation home">
+          <span className="brand-mark" aria-hidden="true">
+            <span className="brand-disc" />
+            <span className="brand-bars">
+              <i />
+              <i />
+              <i />
+              <i />
+            </span>
+          </span>
           <span>
-            play it back<span className="brand-dot">.</span>
+            Russell’s<span className="brand-subtitle">constellation</span>
           </span>
         </a>
         <div className="topbar-filters">
@@ -227,8 +227,8 @@ export default function Explorer({
                 setQuery(e.target.value);
                 setLimit(60);
               }}
-              placeholder="Find an artist"
-              aria-label="Find an artist"
+              placeholder="Find a song or artist"
+              aria-label="Find a song or artist"
             />
             {query ? (
               <button aria-label="Clear search" onClick={() => setQuery("")}>
@@ -254,8 +254,16 @@ export default function Explorer({
                 key={p}
                 disabled={collection.source === "sample" && p !== "all"}
                 aria-pressed={period === p}
-                className={period === p ? "active" : ""}
-                onClick={() => setPeriod(p)}
+                className={effectivePeriod === p ? "active" : ""}
+                onMouseEnter={() => setPreviewPeriod(p)}
+                onMouseLeave={() => setPreviewPeriod(null)}
+                onFocus={() => setPreviewPeriod(p)}
+                onBlur={() => setPreviewPeriod(null)}
+                onClick={() => {
+                  setPeriod(p);
+                  setPreviewPeriod(null);
+                  setSelected("");
+                }}
               >
                 {timeLabel(p)}
               </button>
@@ -287,7 +295,7 @@ export default function Explorer({
             </summary>
             <div className="menu-panel">
               <button onClick={() => open("artists")}>
-                <List size={16} /> Artist list
+                <List size={16} /> Song list
               </button>
               <button onClick={() => open("import")}>
                 <Upload size={16} /> Import history
@@ -360,7 +368,13 @@ export default function Explorer({
           </details>
         </div>
       </header>
-      <main className="universe" aria-label="Music constellation">
+      <main
+        className="universe"
+        aria-label="Music constellation"
+        data-period={effectivePeriod}
+        data-genre={effectiveGenre}
+        data-visible-songs={sceneVisible.length}
+      >
         <Constellation
           data={graph}
           selected={selected}
@@ -369,6 +383,8 @@ export default function Explorer({
           mode={mode}
           rotating={rotating}
           command={command}
+          playCounts={playCounts}
+          countScope={countScope}
           onSelect={setSelected}
         />
         {availableGenres.length > 0 && (
@@ -384,15 +400,17 @@ export default function Explorer({
             </span>
             <div className="legend-items">
               <button
-                className={genre === "All genres" ? "active" : ""}
+                className={effectiveGenre === "All genres" ? "active" : ""}
                 aria-pressed={genre === "All genres"}
                 onClick={() => {
                   setGenre("All genres");
                   setPreviewGenre(null);
                   setSelected("");
                 }}
-                onMouseEnter={() => setPreviewGenre(null)}
-                onFocus={() => setPreviewGenre(null)}
+                onMouseEnter={() => setPreviewGenre("All genres")}
+                onMouseLeave={() => setPreviewGenre(null)}
+                onFocus={() => setPreviewGenre("All genres")}
+                onBlur={() => setPreviewGenre(null)}
               >
                 All
               </button>
@@ -400,13 +418,13 @@ export default function Explorer({
                 <button
                   key={g.name}
                   aria-pressed={genre === g.name}
-                  className={genre === g.name ? "active" : ""}
+                  className={effectiveGenre === g.name ? "active" : ""}
                   onMouseEnter={() => setPreviewGenre(g.name)}
                   onMouseLeave={() => setPreviewGenre(null)}
                   onFocus={() => setPreviewGenre(g.name)}
                   onBlur={() => setPreviewGenre(null)}
                   onClick={() => {
-                    setGenre(genre === g.name ? "All genres" : g.name);
+                    setGenre(g.name);
                     setPreviewGenre(null);
                     setSelected("");
                   }}
@@ -423,9 +441,9 @@ export default function Explorer({
         {matches.length === 0 && (
           <div className="empty-state">
             <p>
-              {artists.length
-                ? "No artists match these filters."
-                : "No genre-tagged artists are available for this period."}
+              {graph.nodes.length
+                ? "No songs match these filters."
+                : "No genre-tagged songs are available for this period."}
             </p>
             <button onClick={clear}>Clear filters</button>
           </div>
@@ -440,17 +458,17 @@ export default function Explorer({
         )}
       </main>
       {modal === "artists" && (
-        <Dialog title="Find an artist" onClose={() => setModal(null)}>
+        <Dialog title="Find a song or artist" onClose={() => setModal(null)}>
           <label className="dialog-search">
             <Search size={15} />
             <input
-              aria-label="Search artist list"
+              aria-label="Search song list"
               value={query}
               onChange={(e) => {
                 setQuery(e.target.value);
                 setLimit(60);
               }}
-              placeholder="Search your artists"
+              placeholder="Search your songs"
             />
           </label>
           <div className="artist-list">
@@ -462,14 +480,16 @@ export default function Explorer({
                     setModal(null);
                   }}
                 >
-                  <strong>{a.name}</strong>
-                  <small>{genreFor(a).name}</small>
+                  <strong>{a.track.name}</strong>
+                  <small>
+                    {a.artist.name} · {a.genre}
+                  </small>
                 </button>
                 <a
-                  href={a.url}
+                  href={a.track.url}
                   target="_blank"
                   rel="noreferrer"
-                  aria-label={"Open " + a.name + " in Spotify"}
+                  aria-label={"Open " + a.track.name + " in Spotify"}
                 >
                   <ArrowUpRight size={16} />
                 </a>
@@ -484,39 +504,39 @@ export default function Explorer({
               Show more
             </button>
           )}
-          {!matches.length && <p>No artists match your search.</p>}
+          {!matches.length && <p>No songs match your search.</p>}
         </Dialog>
       )}
       {modal === "help" && (
-        <Dialog title="Just you and your music." onClose={() => setModal(null)}>
+        <Dialog title="Russell’s constellation" onClose={() => setModal(null)}>
           <p>
-            Drag to orbit the constellation. Scroll or pinch to zoom. Hover over
-            a dot to see the artist; tap on a touchscreen. Click a dot to
-            highlight its connections.
+            Every dot is a song. Songs from the same primary artist sit together
+            and connect to each other. There are no links between unrelated
+            artists.
           </p>
           <p>
-            Use the color legend to preview a genre or click it to focus. Only a
-            few connections appear at rest; hover or select an artist to reveal
-            more. Colors follow genre tags, and lines connect artists with
-            shared tags. Genres overlap in one cloud. Artists without genre
-            metadata are omitted from this view.
+            Genres have consistent homes. Multi-genre artists sit toward the
+            boundaries between those homes. Hover a genre or time tab to preview
+            it; click to keep that view. Leaving the tab restores your
+            selection.
           </p>
           <p>
-            <strong>All available</strong> combines retrieved top lists and
-            playlist contents. <strong>4 weeks</strong> and{" "}
-            <strong>6 months</strong> use Spotify’s top items for those periods.
-            Imported history uses actual play dates.
+            More recorded plays produce darker, deeper colors. Hover a song for
+            its count and source. The current snapshot has only{" "}
+            {collection.recent?.length || 0} recent listening events; missing
+            counts are unknown, never zero. Import extended listening history
+            for counts across your years of listening.
           </p>
           <p>
-            Use Artist list in the menu for keyboard navigation and Spotify
-            links. Press <kbd>/</kbd> to search, or <kbd>D</kbd> to change
-            theme.
+            This app reads local files and browser storage. It does not fetch
+            Spotify when you open it, switch tabs, or reload. Fonts and app
+            assets are local too. External sites open only when you choose their
+            links.
           </p>
-          <p className="source-note">
-            Genre tags: Spotify and Last.fm community tags.{" "}
-            {collection.source === "sample"
-              ? "This is an illustrative sample collection."
-              : "This is a private local snapshot, not complete lifetime listening history."}
+          <p>
+            All available includes the saved song collection. Four weeks and six
+            months use imported play dates, or saved Spotify top lists when
+            using the existing snapshot. Press / to search or D to switch theme.
           </p>
         </Dialog>
       )}

@@ -2,7 +2,7 @@
 import { useEffect, useRef, useState } from "react";
 import * as THREE from "three";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
-import type { MapData } from "../lib/constellation";
+import { playShade, type MapData } from "../lib/constellation";
 export type SceneCommand = { type: "reset" | "in" | "out"; nonce: number };
 type Props = {
   data: MapData;
@@ -13,6 +13,8 @@ type Props = {
   onSelect: (id: string) => void;
   command: SceneCommand;
   rotating: boolean;
+  playCounts: Record<string, number>;
+  countScope: string;
 };
 type Engine = {
   camera: THREE.PerspectiveCamera;
@@ -29,16 +31,32 @@ export default function Constellation({
   onSelect,
   command,
   rotating,
+  playCounts,
+  countScope,
 }: Props) {
   const host = useRef<HTMLDivElement>(null),
     engine = useRef<Engine | null>(null),
-    props = useRef({ selected, visible: new Set(visible), theme, onSelect });
+    props = useRef({
+      selected,
+      visible: new Set(visible),
+      theme,
+      onSelect,
+      playCounts,
+      countScope,
+    });
   const [failed, setFailed] = useState(false);
   const rotation = useRef(false);
   useEffect(() => {
-    props.current = { selected, visible: new Set(visible), theme, onSelect };
+    props.current = {
+      selected,
+      visible: new Set(visible),
+      theme,
+      onSelect,
+      playCounts,
+      countScope,
+    };
     engine.current?.render();
-  }, [selected, visible, theme, onSelect]);
+  }, [selected, visible, theme, onSelect, playCounts, countScope]);
   useEffect(() => {
     rotation.current = rotating;
   }, [rotating]);
@@ -60,7 +78,7 @@ export default function Constellation({
     renderer.setClearColor(0x000000, 0);
     renderer.domElement.setAttribute(
       "aria-label",
-      "Interactive artist constellation. Hover for names, drag to orbit. Artist list in More options provides keyboard access.",
+      "Russell’s song constellation. Hover for songs, drag to orbit. Song list in More options provides keyboard access.",
     );
     renderer.domElement.setAttribute("role", "img");
     el.appendChild(renderer.domElement);
@@ -98,7 +116,7 @@ export default function Constellation({
         dark: { value: 1 },
       },
       vertexShader: `attribute vec3 aColor; attribute float aSize; attribute float aVisible; varying vec3 vColor; varying float vVisible; uniform float pixelRatio; void main(){ vColor=aColor; vVisible=aVisible; vec4 mv=modelViewMatrix*vec4(position,1.0);gl_PointSize=clamp(aSize*560.0/-mv.z,3.0,42.0)*pixelRatio;gl_Position=projectionMatrix*mv;}`,
-      fragmentShader: `varying vec3 vColor; varying float vVisible;uniform float dark; void main(){float d=length(gl_PointCoord-0.5)*2.0;if(d>1.0)discard;float core=1.0-smoothstep(.22,.48,d);float halo=pow(1.0-d,2.0)*.55;float alpha=(core+halo)*vVisible;vec3 color=mix(vColor,mix(vColor,vec3(1.0),.4),core*dark);gl_FragColor=vec4(color,alpha);}`,
+      fragmentShader: `varying vec3 vColor; varying float vVisible;uniform float dark; void main(){float d=length(gl_PointCoord-0.5)*2.0;if(d>1.0)discard;float core=1.0-smoothstep(.22,.48,d);float halo=pow(1.0-d,2.0)*.55;float alpha=(core+halo)*vVisible;vec3 color=vColor;gl_FragColor=vec4(color,alpha);}`,
     });
     const points = new THREE.Points(geometry, material);
     scene.add(points);
@@ -147,6 +165,7 @@ export default function Constellation({
     el.appendChild(tooltip);
     let hoveredIndex = -1,
       lastHovered = -1;
+    let lastCounts: Record<string, number> | null = null;
     let selectedIndex = -1,
       lastTheme = "",
       lastVisible: Set<string> | null = null,
@@ -162,27 +181,34 @@ export default function Constellation({
         lastTheme === p.theme &&
         lastVisible === p.visible &&
         lastSelected === p.selected &&
-        lastHovered === hoveredIndex
+        lastHovered === hoveredIndex &&
+        lastCounts === p.playCounts
       )
         return;
       lastHovered = hoveredIndex;
+      lastCounts = p.playCounts;
       lastTheme = p.theme;
       lastVisible = p.visible;
       lastSelected = p.selected;
       material.uniforms.dark.value = p.theme === "dark" ? 1 : 0;
-      selectedIndex = data.nodes.findIndex((n) => n.artist.id === p.selected);
+      selectedIndex = data.nodes.findIndex((n) => n.id === p.selected);
       const focus = hoveredIndex >= 0 ? hoveredIndex : selectedIndex;
       const neighbors = new Set<number>();
-      if (focus >= 0 && p.visible.has(data.nodes[focus].artist.id)) {
+      if (focus >= 0 && p.visible.has(data.nodes[focus].id)) {
         neighbors.add(focus);
         for (const [a, b] of data.edges) {
           if (a === focus) neighbors.add(b);
           if (b === focus) neighbors.add(a);
         }
       }
+      const maxPlays = Object.values(p.playCounts).reduce(
+        (max, n) => Math.max(max, n),
+        1,
+      );
       data.nodes.forEach((n, i) => {
-        const show = p.visible.has(n.artist.id);
+        const show = p.visible.has(n.id);
         color.set(p.theme === "dark" ? n.color : n.lightColor);
+        color.multiplyScalar(playShade(p.playCounts[n.id], maxPlays));
         colors.set([color.r, color.g, color.b], i * 3);
         visibility[i] = show
           ? neighbors.size
@@ -198,14 +224,13 @@ export default function Constellation({
       data.edges.forEach(([a, b], i) => {
         const n = data.nodes[a];
         color.set(p.theme === "dark" ? n.color : n.lightColor);
-        const show =
-          p.visible.has(n.artist.id) && p.visible.has(data.nodes[b].artist.id);
+        const show = p.visible.has(n.id) && p.visible.has(data.nodes[b].id);
         const connected = a === focus || b === focus;
         const strength = !show
           ? 0
           : neighbors.size
             ? connected
-              ? 3.5
+              ? 3
               : data.overview[i]
                 ? 0.12
                 : 0
@@ -306,7 +331,7 @@ export default function Constellation({
         .filter(
           (h) =>
             h.index !== undefined &&
-            props.current.visible.has(data.nodes[h.index].artist.id),
+            props.current.visible.has(data.nodes[h.index].id),
         );
       return hits.sort(
         (a, b) => (a.distanceToRay || 0) - (b.distanceToRay || 0),
@@ -322,7 +347,7 @@ export default function Constellation({
         return;
       const hit = pick(e);
       if (hit?.index !== undefined) {
-        props.current.onSelect(data.nodes[hit.index].artist.id);
+        props.current.onSelect(data.nodes[hit.index].id);
         if (e.pointerType === "touch") hover(e);
       } else {
         props.current.onSelect("");
@@ -345,7 +370,22 @@ export default function Constellation({
       if (hit?.index !== undefined) {
         const n = data.nodes[hit.index],
           rect = el.getBoundingClientRect();
-        tooltip.textContent = n.artist.name + " · " + n.genre;
+        const count = props.current.playCounts[n.id];
+        tooltip.replaceChildren();
+        const title = document.createElement("strong");
+        title.textContent = n.track.name;
+        const artist = document.createElement("span");
+        artist.textContent = n.artist.name + " · " + n.genre;
+        const detail = document.createElement("small");
+        detail.textContent =
+          count === undefined
+            ? "Play count unavailable · import history"
+            : count +
+              " recorded " +
+              (count === 1 ? "play" : "plays") +
+              " · " +
+              props.current.countScope;
+        tooltip.append(title, artist, detail);
         tooltip.style.left =
           Math.max(10, Math.min(width - 210, e.clientX - rect.left + 15)) +
           "px";

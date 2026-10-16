@@ -52,9 +52,9 @@ test("minimal constellation, hover-only names, filters and orbit controls", asyn
   await page.mouse.move(5, 5);
   await expect(page.locator(".graph-tooltip")).toBeHidden();
   await page
-    .getByRole("textbox", { name: "Find an artist", exact: true })
+    .getByRole("textbox", { name: "Find a song or artist", exact: true })
     .fill("no-such-artist-zzzz");
-  await expect(page.getByText("No artists match these filters.")).toBeVisible();
+  await expect(page.getByText("No songs match these filters.")).toBeVisible();
   await page
     .getByRole("button", { name: "Clear filters", exact: true })
     .click();
@@ -65,6 +65,24 @@ test("minimal constellation, hover-only names, filters and orbit controls", asyn
       await expect(button).toHaveAttribute("aria-pressed", "true");
       await expect(canvas).toBeVisible();
     }
+  }
+  const fourWeeks = page.getByRole("button", { name: "4 weeks", exact: true });
+  if (await fourWeeks.isEnabled()) {
+    await fourWeeks.hover();
+    await expect(page.locator(".universe")).toHaveAttribute(
+      "data-period",
+      "short_term",
+    );
+    await page.getByRole("button", { name: "6 months", exact: true }).hover();
+    await expect(page.locator(".universe")).toHaveAttribute(
+      "data-period",
+      "medium_term",
+    );
+    await page.mouse.move(5, 5);
+    await expect(page.locator(".universe")).toHaveAttribute(
+      "data-period",
+      "all",
+    );
   }
   const genre = page.getByRole("combobox", {
     name: "Filter by genre",
@@ -78,6 +96,23 @@ test("minimal constellation, hover-only names, filters and orbit controls", asyn
   await expect(genre).toHaveValue("All genres");
   await genreButton.click();
   await expect(genre).toHaveValue(genreName);
+  const nextGenre = legend.getByRole("button").nth(2);
+  const nextGenreName = (await nextGenre.textContent())!.trim();
+  await nextGenre.hover();
+  await expect(page.locator(".universe")).toHaveAttribute(
+    "data-genre",
+    nextGenreName,
+  );
+  await expect(page.locator(".universe")).not.toHaveAttribute(
+    "data-visible-songs",
+    "0",
+  );
+  await expect(genre).toHaveValue(genreName);
+  await page.mouse.move(5, 5);
+  await expect(page.locator(".universe")).toHaveAttribute(
+    "data-genre",
+    genreName,
+  );
   await expect(genreButton).toHaveAttribute("aria-pressed", "true");
   await legend.getByRole("button", { name: "All", exact: true }).click();
   await expect(genre).toHaveValue("All genres");
@@ -85,7 +120,7 @@ test("minimal constellation, hover-only names, filters and orbit controls", asyn
   await expect(page.locator(".empty-state")).toHaveCount(0);
   await genre.selectOption("All genres");
   await more(page);
-  await page.getByRole("button", { name: "Artist list", exact: true }).click();
+  await page.getByRole("button", { name: "Song list", exact: true }).click();
   await expect(page.getByRole("dialog")).toBeVisible();
   const artist = page.locator(".artist-list>div>button").first();
   await artist.click();
@@ -151,11 +186,11 @@ test("local import persists and can be removed without uploading raw data", asyn
   });
   await expect(page.getByRole("status")).toContainText("History saved");
   await expect(
-    page.getByText("No genre-tagged artists are available for this period."),
+    page.getByText("No genre-tagged songs are available for this period."),
   ).toBeVisible();
   await page.reload();
   await expect(
-    page.getByText("No genre-tagged artists are available for this period."),
+    page.getByText("No genre-tagged songs are available for this period."),
   ).toBeVisible();
   const stored = await page.evaluate(
     () =>
@@ -190,4 +225,24 @@ test("local import persists and can be removed without uploading raw data", asyn
   await expect(page.getByRole("status")).toContainText(
     "Returned to your Spotify snapshot",
   );
+});
+
+test("opening and exploring the app makes no off-device requests", async ({
+  page,
+}) => {
+  const outside: string[] = [];
+  page.on("request", (request) => {
+    const url = new URL(request.url());
+    if (
+      !["127.0.0.1", "localhost"].includes(url.hostname) &&
+      !["data:", "blob:"].includes(url.protocol)
+    )
+      outside.push(url.origin);
+  });
+  await page.goto("/");
+  await expect(page.locator("canvas")).toBeVisible();
+  await page.getByRole("button", { name: "6 months", exact: true }).hover();
+  await page.reload();
+  await expect(page.locator("canvas")).toBeVisible();
+  expect(outside).toEqual([]);
 });

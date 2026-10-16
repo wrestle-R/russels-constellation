@@ -1,20 +1,33 @@
 import { genreFor, genres, type Artist, type Track } from "./music";
 export type MapNode = {
+  id: string;
+  track: Track;
   artist: Artist;
   x: number;
   y: number;
   z: number;
   size: number;
-  count: number;
   genre: string;
   color: string;
   lightColor: string;
-  importance: number;
 };
 export type MapData = {
   nodes: MapNode[];
   edges: [number, number][];
   overview: boolean[];
+};
+// Neighboring styles have neighboring homes. Multi-genre artists interpolate
+// toward their other homes, so the regions have overlapping, permeable edges.
+const homes: Record<string, [number, number, number]> = {
+  Pop: [0, 20, 0],
+  "Indie & alternative": [-105, 65, 15],
+  "Hip-hop": [110, 25, 0],
+  "R&B & soul": [50, -85, 15],
+  Electronic: [60, 130, -10],
+  Rock: [-145, -40, -5],
+  "Folk & acoustic": [-85, -115, 5],
+  "Jazz & classical": [155, -100, -10],
+  Global: [175, 120, 10],
 };
 function hash(text: string) {
   let h = 2166136261;
@@ -25,113 +38,100 @@ function hash(text: string) {
 export function buildConstellation(
   artists: Artist[],
   tracks: Track[],
-  ranking: string[],
 ): MapData {
-  const counts = new Map<string, number>();
-  for (const t of tracks)
-    for (const id of t.artistIds || [t.artistId || ""])
-      counts.set(id, (counts.get(id) || 0) + 1);
-  const ranks = new Map(ranking.map((id, i) => [id, i]));
-  // All genres inhabit one overlapping volume. Multiple tags blend an artist's
-  // position between colors; no separate genre containers or unknown cloud.
-  const nodes: MapNode[] = artists
-    .filter((a) => genreFor(a).name !== "Unclassified")
-    .map((a) => {
-      const primary = genreFor(a);
-      const families = [
+  const byId = new Map(artists.map((a) => [a.id, a]));
+  const byArtist = new Map<string, Track[]>();
+  for (const track of tracks) {
+    const owner = byId.get(track.artistId || track.artistIds?.[0] || "");
+    if (!owner || genreFor(owner).name === "Unclassified") continue;
+    const list = byArtist.get(owner.id) || [];
+    list.push(track);
+    byArtist.set(owner.id, list);
+  }
+  const regions = new Map<string, Artist[]>();
+  for (const id of byArtist.keys()) {
+    const artist = byId.get(id)!;
+    const key = genreFor(artist).name;
+    const list = regions.get(key) || [];
+    list.push(artist);
+    regions.set(key, list);
+  }
+  for (const list of regions.values())
+    list.sort((a, b) => a.id.localeCompare(b.id));
+  const nodes: MapNode[] = [],
+    edges: [number, number][] = [];
+  for (const [family, group] of regions) {
+    const home = homes[family];
+    const extent = Math.min(83, 28 + Math.sqrt(group.length) * 3.5);
+    group.forEach((artist, index) => {
+      const secondary = [
         ...new Set(
-          a.genres.map((tag) => genreFor({ ...a, genres: [tag] }).name),
+          artist.genres.map((g) => genreFor({ ...artist, genres: [g] }).name),
         ),
-      ].filter((g) => g !== "Unclassified");
-      let cx = 0,
-        cy = 0;
-      for (const name of families) {
-        const i = genres.findIndex((g) => g.name === name),
-          angle = i * 2.399963;
-        cx += Math.cos(angle) * 58;
-        cy += Math.sin(angle) * 40;
+      ].filter((g) => g !== family && homes[g]);
+      const center = [...home];
+      if (secondary.length) {
+        for (let axis = 0; axis < 3; axis++)
+          center[axis] =
+            home[axis] * 0.78 +
+            (secondary.reduce((sum, g) => sum + homes[g][axis], 0) /
+              secondary.length) *
+              0.22;
       }
-      cx /= families.length || 1;
-      cy /= families.length || 1;
-      const primaryAngle =
-        genres.findIndex((g) => g.name === primary.name) * 2.399963;
-      cx = cx * 0.35 + Math.cos(primaryAngle) * 100;
-      cy = cy * 0.35 + Math.sin(primaryAngle) * 65;
-      const angle = hash(a.id + "angle") * Math.PI * 2;
-      const radius = Math.sqrt(hash(a.id + "radius")) * 135;
-      const curl = angle + radius * 0.006;
-      const count = counts.get(a.id) || 0;
-      return {
-        artist: a,
-        x: Math.cos(curl) * radius * 1.35 + cx,
-        y: Math.sin(curl) * radius * 0.83 + cy,
-        z: (hash(a.id + "depth") - 0.5) * 100 + Math.sin(curl * 2) * 22,
-        size: Math.min(10, 3.8 + Math.sqrt(count) * 0.6),
-        count,
-        genre: primary.name,
-        color: primary.color,
-        lightColor: primary.light,
-        importance:
-          (ranks.has(a.id) ? 10000 - (ranks.get(a.id) || 0) : 0) + count,
-      };
+      const angle = index * 2.399963 + hash(artist.id) * 0.4;
+      const radius = Math.sqrt((index + 0.5) / group.length) * extent;
+      const ax = center[0] + Math.cos(angle) * radius,
+        ay = center[1] + Math.sin(angle) * radius * 0.85,
+        az = center[2] + (hash(artist.id + "depth") - 0.5) * 45;
+      const color = genres.find((g) => g.name === family)!;
+      const songs = byArtist
+        .get(artist.id)!
+        .sort((a, b) => a.id.localeCompare(b.id));
+      const members: number[] = [];
+      songs.forEach((track, i) => {
+        const theta = i * 2.399963 + hash(artist.id) * Math.PI * 2;
+        const orbit = songs.length === 1 ? 0 : 3 + Math.sqrt(i) * 2.8;
+        const node: MapNode = {
+          id: track.id,
+          track,
+          artist,
+          x: ax + Math.cos(theta) * orbit,
+          y: ay + Math.sin(theta) * orbit,
+          z: az + (hash(track.id) - 0.5) * 9,
+          size: 5.2,
+          genre: family,
+          color: color.color,
+          lightColor: color.light,
+        };
+        const ni = nodes.length;
+        nodes.push(node);
+        if (members.length) {
+          let parent = members[0],
+            best = Infinity;
+          for (const j of members) {
+            const other = nodes[j],
+              distance =
+                (node.x - other.x) ** 2 +
+                (node.y - other.y) ** 2 +
+                (node.z - other.z) ** 2;
+            if (distance < best) {
+              best = distance;
+              parent = j;
+            }
+          }
+          edges.push([parent, ni]);
+        }
+        members.push(ni);
+      });
     });
-  // Shared-tag links are found across the whole cloud, including genre borders.
-  const byTag = new Map<string, number[]>();
-  nodes.forEach((n, i) =>
-    n.artist.genres.forEach((tag) => {
-      const key = tag.toLowerCase();
-      const ids = byTag.get(key) || [];
-      ids.push(i);
-      byTag.set(key, ids);
-    }),
-  );
-  const edges: [number, number][] = [],
-    seen = new Set<string>();
-  nodes.forEach((n, i) => {
-    const candidates = new Set<number>();
-    for (const tag of n.artist.genres)
-      for (const j of byTag.get(tag.toLowerCase()) || [])
-        if (j !== i) candidates.add(j);
-    const nearest = [...candidates]
-      .map((j) => ({
-        j,
-        d:
-          (n.x - nodes[j].x) ** 2 +
-          (n.y - nodes[j].y) ** 2 +
-          (n.z - nodes[j].z) ** 2,
-      }))
-      .filter((c) => c.d < 90 ** 2)
-      .sort((a, b) => a.d - b.d)
-      .slice(0, 3);
-    for (const { j } of nearest) {
-      const key = Math.min(i, j) + ":" + Math.max(i, j);
-      if (!seen.has(key)) {
-        seen.add(key);
-        edges.push([i, j]);
-      }
-    }
-  });
-  // A sparse nearest-neighbor skeleton is visible at rest; additional genuine
-  // shared-tag relationships remain available when an artist is explored.
-  const degree = new Uint8Array(nodes.length);
-  const overview = new Array<boolean>(edges.length).fill(false);
-  edges
-    .map(([a, b], i) => ({
-      i,
-      a,
-      b,
-      d:
-        (nodes[a].x - nodes[b].x) ** 2 +
-        (nodes[a].y - nodes[b].y) ** 2 +
-        (nodes[a].z - nodes[b].z) ** 2,
-    }))
-    .sort((a, b) => a.d - b.d)
-    .forEach(({ i, a, b }) => {
-      if (degree[a] < 2 && degree[b] < 2) {
-        overview[i] = true;
-        degree[a]++;
-        degree[b]++;
-      }
-    });
-  return { nodes, edges, overview };
+  }
+  return { nodes, edges, overview: edges.map(() => true) };
+}
+// More observed plays means lower luminance in both themes. Unknown counts
+// retain a neutral midpoint, rather than being silently interpreted as zero.
+export function playShade(count: number | undefined, max: number) {
+  return count === undefined
+    ? 0.64
+    : 0.92 -
+        (0.5 * Math.log1p(Math.max(0, count))) / Math.log1p(Math.max(1, max));
 }

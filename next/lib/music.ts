@@ -231,3 +231,31 @@ export function sampleCollection(): Collection {
     status: {},
   };
 }
+
+export function recordedPlayCounts(
+  collection: Collection,
+  period: Period,
+  now = Date.now(),
+) {
+  const events =
+    collection.source === "import"
+      ? collection.plays || []
+      : collection.recent || [];
+  const cutoff =
+    period === "all"
+      ? -Infinity
+      : now - (period === "short_term" ? 28 : 183) * 86400000;
+  const counts: Record<string, number> = {};
+  if (collection.source === "import")
+    for (const t of collection.tracks) counts[t.id] = 0;
+  const seen = new Set<string>();
+  for (const event of events) {
+    const time = Date.parse(event.playedAt);
+    if (!Number.isFinite(time) || time < cutoff || time > now) continue;
+    const key = event.trackId + "@" + event.playedAt;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    counts[event.trackId] = (counts[event.trackId] || 0) + 1;
+  }
+  return counts;
+}

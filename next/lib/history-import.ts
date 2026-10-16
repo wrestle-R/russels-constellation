@@ -110,7 +110,12 @@ export async function importHistory(
       artists.set(artist.id, artist);
       const albumId = old?.albumId || "import:" + artistName + ":" + albumName;
       const track: Track = old
-        ? { ...old, artistIds: [artist.id] }
+        ? {
+            ...old,
+            artist: artistName,
+            artistId: artist.id,
+            artistIds: [artist.id],
+          }
         : {
             id,
             name,

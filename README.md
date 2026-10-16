@@ -1,6 +1,6 @@
-# Play It Back
+# Russell’s constellation
 
-A full-screen artist constellation built with Next.js and Three.js. One top bar provides search, genre and time filters, camera controls, and light/dark themes. Artist names appear on hover; colors overlap in a single angled cloud.
+A private, local-first song constellation built with Next.js and Three.js. Each dot is a song; songs by the same primary artist form connected groups within overlapping genre regions. Recorded listening events determine color depth.
 
 ## Development
 
@@ -10,8 +10,8 @@ npm install
 npm run dev
 ```
 
-The app runs at http://127.0.0.1:3000. Personal snapshots, credentials, generated screenshots, and local project notes are excluded from version control. Without a personal snapshot, the app uses a labeled sample collection.
+Open http://127.0.0.1:3000. The app reads a local snapshot and optional browser-stored history. It does not contact Spotify or external font services when opened, refreshed, or filtered. Snapshot/metadata refresh commands are manual-only tools.
 
-## References
+Personal snapshots, credentials, screenshots, and local notes are excluded from Git. Without a snapshot, a sample collection is available.
 
-[Lyra](https://github.com/RutvikGupta/lyra) informed the artist-graph and local-history-import approach. This project implements its own interface and renderer.
+[Lyra](https://github.com/RutvikGupta/lyra) informed the initial constellation and local-history concept; this project has its own renderer and data model.
