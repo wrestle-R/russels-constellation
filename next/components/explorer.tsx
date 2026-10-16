@@ -45,7 +45,9 @@ export default function Explorer({
 }: {
   collection: Collection;
 }) {
-  const [collection, setCollection] = useState(() => applyCollectionPreferences(initial)),
+  const [collection, setCollection] = useState(() =>
+      applyCollectionPreferences(initial),
+    ),
     [period, setPeriod] = useState<Period>("all"),
     [query, setQuery] = useState(""),
     [genre, setGenre] = useState("All genres"),

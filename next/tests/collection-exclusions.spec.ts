@@ -1,5 +1,8 @@
 import { test, expect } from "@playwright/test";
-import { matchesCollectionPreference, applyCollectionPreferences } from "../lib/collection-exclusions";
+import {
+  matchesCollectionPreference,
+  applyCollectionPreferences,
+} from "../lib/collection-exclusions";
 import { type Artist, type Collection } from "../lib/music";
 const artist = (id: string, tags: string[]): Artist => ({
   id,

@@ -1,5 +1,71 @@
 import type { Artist, Collection } from "./music";
-const collectionPreferencePattern = new RegExp(String.fromCharCode(40,63,58,94,124,91,94,97,45,122,93,41,40,63,58,107,91,92,115,45,93,42,112,111,112,124,107,111,114,101,97,110,91,92,115,45,93,43,40,63,58,112,111,112,124,105,100,111,108,41,41,40,63,58,36,124,91,94,97,45,122,93,41));
+const collectionPreferencePattern = new RegExp(
+  String.fromCharCode(
+    40,
+    63,
+    58,
+    94,
+    124,
+    91,
+    94,
+    97,
+    45,
+    122,
+    93,
+    41,
+    40,
+    63,
+    58,
+    107,
+    91,
+    92,
+    115,
+    45,
+    93,
+    42,
+    112,
+    111,
+    112,
+    124,
+    107,
+    111,
+    114,
+    101,
+    97,
+    110,
+    91,
+    92,
+    115,
+    45,
+    93,
+    43,
+    40,
+    63,
+    58,
+    112,
+    111,
+    112,
+    124,
+    105,
+    100,
+    111,
+    108,
+    41,
+    41,
+    40,
+    63,
+    58,
+    36,
+    124,
+    91,
+    94,
+    97,
+    45,
+    122,
+    93,
+    41,
+  ),
+);
 // Match complete genre tags so unrelated styles remain in the collection.
 export function matchesCollectionPreference(artist: Artist) {
   return artist.genres.some((tag) => {
@@ -7,9 +73,7 @@ export function matchesCollectionPreference(artist: Artist) {
       .normalize("NFKC")
       .toLowerCase()
       .replace(/[‐‑‒–—−]/g, "-");
-    return collectionPreferencePattern.test(
-      normalized,
-    );
+    return collectionPreferencePattern.test(normalized);
   });
 }
 export function applyCollectionPreferences(collection: Collection): Collection {
