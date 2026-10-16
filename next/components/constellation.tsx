@@ -171,7 +171,9 @@ export default function Constellation({
     tooltip.hidden = true;
     el.appendChild(tooltip);
     let hoveredIndex = -1,
-      lastHovered = -1;
+      lastHovered = -1,
+      touchFocus = false,
+      lastTouchFocus = false;
     let lastCounts: Record<string, number> | null = null;
     let selectedIndex = -1,
       lastTheme = "",
@@ -189,10 +191,12 @@ export default function Constellation({
         lastVisible === p.visible &&
         lastSelected === p.selected &&
         lastHovered === hoveredIndex &&
+        lastTouchFocus === touchFocus &&
         lastCounts === p.playCounts
       )
         return;
       lastHovered = hoveredIndex;
+      lastTouchFocus = touchFocus;
       lastCounts = p.playCounts;
       lastTheme = p.theme;
       lastVisible = p.visible;
@@ -221,7 +225,9 @@ export default function Constellation({
           ? neighbors.size
             ? neighbors.has(i)
               ? 1
-              : 0.32
+              : touchFocus
+                ? 0.9
+                : 0.32
             : 0.9
           : 0.035;
       });
@@ -239,7 +245,9 @@ export default function Constellation({
             ? connected
               ? 3
               : data.overview[i]
-                ? 0.12
+                ? touchFocus
+                  ? 0.7
+                  : 0.12
                 : 0
             : data.overview[i]
               ? 0.7
@@ -372,6 +380,7 @@ export default function Constellation({
       return index === undefined ? undefined : { index };
     }
     const down = (e: PointerEvent) => {
+      touchFocus = e.pointerType === "touch";
       pointers.add(e.pointerId);
       if (pointers.size === 1) {
         gesture = false;
@@ -397,6 +406,7 @@ export default function Constellation({
       }
     };
     const hover = (e: PointerEvent) => {
+      touchFocus = e.pointerType === "touch";
       if (e.buttons) {
         if (
           Math.hypot(e.clientX - pointerStart.x, e.clientY - pointerStart.y) > 8

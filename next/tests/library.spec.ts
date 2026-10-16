@@ -321,3 +321,59 @@ test("opening and exploring stays on-device and fullscreen failures are handled"
   await expect(page.locator("canvas")).toBeVisible();
   expect(outside).toEqual([]);
 });
+
+test("mobile star taps keep the background stable and suppress the native canvas highlight", async ({
+  browser,
+}) => {
+  const context = await browser.newContext({
+    viewport: { width: 390, height: 844 },
+    isMobile: true,
+    hasTouch: true,
+    colorScheme: "dark",
+    reducedMotion: "reduce",
+  });
+  const page = await context.newPage();
+  try {
+    await ready(page);
+    const canvas = page.locator("canvas");
+    const original = await canvas.elementHandle();
+    const bounds = (await canvas.boundingBox())!;
+    let point: { x: number; y: number } | undefined;
+    for (let x = 80; x < 310 && !point; x += 24)
+      for (let y = 250; y < 580 && !point; y += 24) {
+        await page.mouse.move(x, y);
+        if (await page.locator(".graph-tooltip").isVisible()) point = { x, y };
+      }
+    expect(point).toBeDefined();
+    await page.mouse.move(0, 0);
+    const clip = { x: 30, y: bounds.y + 20, width: 120, height: 50 };
+    const before = await page.screenshot({ clip });
+    const session = await context.newCDPSession(page);
+    for (let i = 0; i < 3; i++) {
+      await session.send("Input.dispatchTouchEvent", {
+        type: "touchStart",
+        touchPoints: [{ ...point!, id: 1 }],
+      });
+      await page.waitForTimeout(100);
+      expect(
+        await canvas.evaluate(
+          (el) => getComputedStyle(el).webkitTapHighlightColor,
+        ),
+      ).toBe("rgba(0, 0, 0, 0)");
+      expect(before.equals(await page.screenshot({ clip }))).toBe(true);
+      await session.send("Input.dispatchTouchEvent", {
+        type: "touchEnd",
+        touchPoints: [],
+      });
+      await expect(page.locator(".graph-tooltip")).toBeVisible();
+      await expect(page.locator(".graph-tooltip strong")).not.toHaveText("");
+      expect(before.equals(await page.screenshot({ clip }))).toBe(true);
+      await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
+      expect(await original!.evaluate((el) => el.isConnected)).toBe(true);
+      await page.touchscreen.tap(10, bounds.y + 10);
+      await expect(page.locator(".graph-tooltip")).toBeHidden();
+    }
+  } finally {
+    await context.close();
+  }
+});
