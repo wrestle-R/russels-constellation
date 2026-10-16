@@ -78,7 +78,7 @@ export default function Constellation({
     renderer.setClearColor(0x000000, 0);
     renderer.domElement.setAttribute(
       "aria-label",
-      "Russell’s song constellation. Hover for songs, drag to orbit. Song list in More options provides keyboard access.",
+      "Russel’s song constellation. Hover for songs, drag to orbit. Song list in More options provides keyboard access.",
     );
     renderer.domElement.setAttribute("role", "img");
     el.appendChild(renderer.domElement);

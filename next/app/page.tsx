@@ -2,10 +2,11 @@ import { readFile } from "node:fs/promises";
 import path from "node:path";
 import Explorer from "../components/explorer";
 import { applyCollectionPreferences } from "../lib/collection-exclusions";
-import { sampleCollection, type Collection } from "../lib/music";
+import { type Collection } from "../lib/music";
+import showcase from "../lib/showcase-data.json";
 export const dynamic = "force-dynamic";
 export default async function Page() {
-  let collection = sampleCollection();
+  let collection = showcase as Collection;
   try {
     const data = JSON.parse(
       await readFile(

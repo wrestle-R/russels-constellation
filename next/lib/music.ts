@@ -57,6 +57,8 @@ export type Collection = {
   plays?: Play[];
   savedTrackIds?: string[];
   importedFiles?: number;
+  playCountSnapshot?: Record<Period, Record<string, number>>;
+  recordedEventCount?: number;
 };
 export const genres = [
   {
@@ -237,6 +239,8 @@ export function recordedPlayCounts(
   period: Period,
   now = Date.now(),
 ) {
+  if (collection.playCountSnapshot)
+    return collection.playCountSnapshot[period] || {};
   const events =
     collection.source === "import"
       ? collection.plays || []

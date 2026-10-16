@@ -86,3 +86,25 @@ test("recorded events determine counts and darkness, without inventing missing c
   expect(playShade(5, 20)).toBeLessThan(playShade(1, 20));
   expect(playShade(undefined, 20)).not.toBe(playShade(0, 20));
 });
+
+test("hosted aggregate counts retain period-specific values without raw listening events", () => {
+  const collection: Collection = {
+    version: 2,
+    fetchedAt: "",
+    source: "spotify",
+    artists: [],
+    tracks: [],
+    albums: [],
+    playlists: [],
+    top: {},
+    status: {},
+    playCountSnapshot: {
+      all: { song: 7 },
+      short_term: { song: 2 },
+      medium_term: { song: 4 },
+    },
+  };
+  expect(recordedPlayCounts(collection, "all")).toEqual({ song: 7 });
+  expect(recordedPlayCounts(collection, "short_term")).toEqual({ song: 2 });
+  expect(recordedPlayCounts(collection, "medium_term")).toEqual({ song: 4 });
+});

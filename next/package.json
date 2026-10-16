@@ -1,5 +1,5 @@
 {
-  "name": "play-it-back",
+  "name": "russels-constellation",
   "version": "0.1.0",
   "private": true,
   "scripts": {
@@ -10,7 +10,8 @@
     "spotify:snapshot": "node scripts/spotify-snapshot.mjs",
     "test:e2e": "playwright test",
     "format": "prettier --write app components lib scripts tests playwright.config.ts",
-    "genres:enrich": "node scripts/enrich-genres.mjs"
+    "genres:enrich": "node scripts/enrich-genres.mjs",
+    "showcase:capture": "tsx scripts/capture-showcase.ts"
   },
   "dependencies": {
     "@fontsource-variable/dm-sans": "^5.3.0",
@@ -29,6 +30,7 @@
     "@types/react-dom": "^19.0.0",
     "@types/three": "^0.186.0",
     "prettier": "^3.9.10",
+    "tsx": "^4.23.15",
     "typescript": "^5.9.0"
   }
 }

@@ -11,3 +11,6 @@
 .DS_Store
 /next/test-results/
 /next/playwright-report/
+
+/next/.vercel/
+/.vercel/

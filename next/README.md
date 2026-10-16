@@ -1,4 +1,4 @@
-# Russell’s constellation
+# Russel’s constellation
 
 A personal, local-only song constellation. One compact top bar provides search, genre/time previews, camera controls, and light/dark themes. The layered record mark keeps the glass-like double-panel treatment.
 
@@ -9,7 +9,7 @@ npm install
 npm run dev
 ```
 
-Open http://127.0.0.1:3000. Without a private snapshot the app shows a labeled sample collection.
+Open http://127.0.0.1:3000. Without a private snapshot the app shows the explicitly approved hosted showcase.
 
 ## Personal Spotify snapshot
 
@@ -48,3 +48,9 @@ Tests cover artist-only song connectivity, deterministic layout, play-event coun
 ## Design references
 
 [Lyra](https://github.com/RutvikGupta/lyra) informed the genre graph and local-history approach. This project uses its own renderer, data model, and interface. The circular theme reveal is adapted from the owner's portfolio behavior.
+
+## Hosting
+
+The private GitHub repository and Vercel project are named `russels-constellation`. Vercel builds the `next/` root directory. `lib/showcase-data.json` contains the owner-approved public song metadata, personal collection preferences, and aggregated recorded-play counts. It omits exact listening timestamps, image URLs, credentials, and raw history exports.
+
+`npm run showcase:capture` explicitly refreshes that file from the current local snapshot. It does not fetch Spotify and is never run automatically during deployment. Commit the resulting showcase only when intentionally publishing an updated collection. Browser-imported history stays in that browser and is not published.

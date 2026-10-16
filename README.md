@@ -1,4 +1,4 @@
-# Russell’s constellation
+# Russel’s constellation
 
 A private, local-first song constellation built with Next.js and Three.js. Each dot is a song; songs by the same primary artist form connected groups within overlapping genre regions. Recorded listening events determine color depth.
 

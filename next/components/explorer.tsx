@@ -206,7 +206,7 @@ export default function Explorer({
   return (
     <div className="constellation-app">
       <header className="topbar">
-        <a className="brand" href="/" aria-label="Russell’s constellation home">
+        <a className="brand" href="/" aria-label="Russel’s constellation home">
           <span className="brand-mark" aria-hidden="true">
             <span className="brand-disc" />
             <span className="brand-bars">
@@ -217,7 +217,7 @@ export default function Explorer({
             </span>
           </span>
           <span>
-            Russell’s<span className="brand-subtitle">constellation</span>
+            Russel’s<span className="brand-subtitle">constellation</span>
           </span>
         </a>
         <div className="topbar-filters">
@@ -511,7 +511,7 @@ export default function Explorer({
         </Dialog>
       )}
       {modal === "help" && (
-        <Dialog title="Russell’s constellation" onClose={() => setModal(null)}>
+        <Dialog title="Russel’s constellation" onClose={() => setModal(null)}>
           <p>
             Every dot is a song. Songs from the same primary artist sit together
             and connect to each other. There are no links between unrelated
@@ -526,15 +526,16 @@ export default function Explorer({
           <p>
             More recorded plays produce darker, deeper colors. Hover a song for
             its count and source. The current snapshot has only{" "}
-            {collection.recent?.length || 0} recent listening events; missing
-            counts are unknown, never zero. Import extended listening history
-            for counts across your years of listening.
+            {collection.recordedEventCount ?? collection.recent?.length ?? 0}{" "}
+            recent listening events; missing counts are unknown, never zero.
+            Import extended listening history for counts across your years of
+            listening.
           </p>
           <p>
-            This app reads local files and browser storage. It does not fetch
-            Spotify when you open it, switch tabs, or reload. Fonts and app
-            assets are local too. External sites open only when you choose their
-            links.
+            This app reads saved snapshots and browser storage. It does not
+            fetch Spotify when you open it, switch tabs, or reload. Fonts and
+            app assets are bundled too. External sites open only when you choose
+            their links.
           </p>
           <p>
             All available includes the saved song collection. Four weeks and six

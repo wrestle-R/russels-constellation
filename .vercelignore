@@ -1,0 +1,11 @@
+.git
+local-docs
+next/node_modules
+next/.next
+next/.vercel
+next/.env*
+next/data
+next/output
+next/test-results
+next/playwright-report
+next/*.tsbuildinfo
