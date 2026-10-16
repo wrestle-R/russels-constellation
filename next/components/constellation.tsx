@@ -145,6 +145,8 @@ export default function Constellation({
     tooltip.className = "graph-tooltip";
     tooltip.hidden = true;
     el.appendChild(tooltip);
+    let hoveredIndex = -1,
+      lastHovered = -1;
     let selectedIndex = -1,
       lastTheme = "",
       lastVisible: Set<string> | null = null,
@@ -159,32 +161,69 @@ export default function Constellation({
       if (
         lastTheme === p.theme &&
         lastVisible === p.visible &&
-        lastSelected === p.selected
+        lastSelected === p.selected &&
+        lastHovered === hoveredIndex
       )
         return;
+      lastHovered = hoveredIndex;
       lastTheme = p.theme;
       lastVisible = p.visible;
       lastSelected = p.selected;
       material.uniforms.dark.value = p.theme === "dark" ? 1 : 0;
       selectedIndex = data.nodes.findIndex((n) => n.artist.id === p.selected);
+      const focus = hoveredIndex >= 0 ? hoveredIndex : selectedIndex;
+      const neighbors = new Set<number>();
+      if (focus >= 0 && p.visible.has(data.nodes[focus].artist.id)) {
+        neighbors.add(focus);
+        for (const [a, b] of data.edges) {
+          if (a === focus) neighbors.add(b);
+          if (b === focus) neighbors.add(a);
+        }
+      }
       data.nodes.forEach((n, i) => {
         const show = p.visible.has(n.artist.id);
         color.set(p.theme === "dark" ? n.color : n.lightColor);
         colors.set([color.r, color.g, color.b], i * 3);
-        visibility[i] = show ? 1 : 0.025;
+        visibility[i] = show
+          ? neighbors.size
+            ? neighbors.has(i)
+              ? 1
+              : 0.32
+            : 0.9
+          : 0.035;
       });
       geometry.attributes.aColor.needsUpdate = true;
       geometry.attributes.aVisible.needsUpdate = true;
+      let drawnEdges = 0;
       data.edges.forEach(([a, b], i) => {
         const n = data.nodes[a];
         color.set(p.theme === "dark" ? n.color : n.lightColor);
         const show =
           p.visible.has(n.artist.id) && p.visible.has(data.nodes[b].artist.id);
-        const strength = show
-          ? a === selectedIndex || b === selectedIndex
-            ? 3
-            : 1
-          : 0.05;
+        const connected = a === focus || b === focus;
+        const strength = !show
+          ? 0
+          : neighbors.size
+            ? connected
+              ? 3.5
+              : data.overview[i]
+                ? 0.12
+                : 0
+            : data.overview[i]
+              ? 0.7
+              : 0;
+        if (strength === 0) return;
+        linePositions.set(
+          [
+            positions[a * 3],
+            positions[a * 3 + 1],
+            positions[a * 3 + 2],
+            positions[b * 3],
+            positions[b * 3 + 1],
+            positions[b * 3 + 2],
+          ],
+          drawnEdges * 6,
+        );
         lineColors.set(
           [
             color.r * strength,
@@ -194,11 +233,13 @@ export default function Constellation({
             color.g * strength,
             color.b * strength,
           ],
-          i * 6,
+          drawnEdges++ * 6,
         );
       });
+      lineGeo.setDrawRange(0, drawnEdges * 2);
+      lineGeo.attributes.position.needsUpdate = true;
       lineGeo.attributes.color.needsUpdate = true;
-      lineMaterial.opacity = p.theme === "dark" ? 0.19 : 0.17;
+      lineMaterial.opacity = p.theme === "dark" ? 0.18 : 0.19;
       ring.visible = selectedIndex >= 0 && p.visible.has(p.selected);
       if (selectedIndex >= 0) {
         const n = data.nodes[selectedIndex];
@@ -290,10 +331,12 @@ export default function Constellation({
     };
     const hover = (e: PointerEvent) => {
       if (e.buttons) {
+        hoveredIndex = -1;
         tooltip.hidden = true;
         return;
       }
       const hit = pick(e);
+      hoveredIndex = hit?.index ?? -1;
       renderer.domElement.style.cursor = hit
         ? "pointer"
         : mode === "3D"
@@ -311,6 +354,7 @@ export default function Constellation({
       } else tooltip.hidden = true;
     };
     const leave = () => {
+      hoveredIndex = -1;
       tooltip.hidden = true;
     };
     renderer.domElement.addEventListener("pointerdown", down);

@@ -11,7 +11,11 @@ export type MapNode = {
   lightColor: string;
   importance: number;
 };
-export type MapData = { nodes: MapNode[]; edges: [number, number][] };
+export type MapData = {
+  nodes: MapNode[];
+  edges: [number, number][];
+  overview: boolean[];
+};
 function hash(text: string) {
   let h = 2166136261;
   for (let i = 0; i < text.length; i++)
@@ -49,8 +53,12 @@ export function buildConstellation(
       }
       cx /= families.length || 1;
       cy /= families.length || 1;
+      const primaryAngle =
+        genres.findIndex((g) => g.name === primary.name) * 2.399963;
+      cx = cx * 0.35 + Math.cos(primaryAngle) * 100;
+      cy = cy * 0.35 + Math.sin(primaryAngle) * 65;
       const angle = hash(a.id + "angle") * Math.PI * 2;
-      const radius = Math.sqrt(hash(a.id + "radius")) * 150;
+      const radius = Math.sqrt(hash(a.id + "radius")) * 135;
       const curl = angle + radius * 0.006;
       const count = counts.get(a.id) || 0;
       return {
@@ -103,5 +111,27 @@ export function buildConstellation(
       }
     }
   });
-  return { nodes, edges };
+  // A sparse nearest-neighbor skeleton is visible at rest; additional genuine
+  // shared-tag relationships remain available when an artist is explored.
+  const degree = new Uint8Array(nodes.length);
+  const overview = new Array<boolean>(edges.length).fill(false);
+  edges
+    .map(([a, b], i) => ({
+      i,
+      a,
+      b,
+      d:
+        (nodes[a].x - nodes[b].x) ** 2 +
+        (nodes[a].y - nodes[b].y) ** 2 +
+        (nodes[a].z - nodes[b].z) ** 2,
+    }))
+    .sort((a, b) => a.d - b.d)
+    .forEach(({ i, a, b }) => {
+      if (degree[a] < 2 && degree[b] < 2) {
+        overview[i] = true;
+        degree[a]++;
+        degree[b]++;
+      }
+    });
+  return { nodes, edges, overview };
 }

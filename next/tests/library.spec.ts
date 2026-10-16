@@ -70,6 +70,17 @@ test("minimal constellation, hover-only names, filters and orbit controls", asyn
     name: "Filter by genre",
     exact: true,
   });
+  const legend = page.getByRole("navigation", { name: "Genre legend" });
+  await expect(legend).toBeVisible();
+  const genreButton = legend.getByRole("button").nth(1);
+  const genreName = (await genreButton.textContent())!.trim();
+  await genreButton.hover();
+  await expect(genre).toHaveValue("All genres");
+  await genreButton.click();
+  await expect(genre).toHaveValue(genreName);
+  await expect(genreButton).toHaveAttribute("aria-pressed", "true");
+  await legend.getByRole("button", { name: "All", exact: true }).click();
+  await expect(genre).toHaveValue("All genres");
   await genre.selectOption({ index: 1 });
   await expect(page.locator(".empty-state")).toHaveCount(0);
   await genre.selectOption("All genres");
@@ -133,13 +144,11 @@ test("local import persists and can be removed without uploading raw data", asyn
   page.on("request", (request) => {
     if (request.method() === "POST") uploads.push(request.url());
   });
-  await page
-    .locator("input[type=file]")
-    .setInputFiles({
-      name: "Streaming_History_Audio_test.json",
-      mimeType: "application/json",
-      buffer: Buffer.from(JSON.stringify(records)),
-    });
+  await page.locator("input[type=file]").setInputFiles({
+    name: "Streaming_History_Audio_test.json",
+    mimeType: "application/json",
+    buffer: Buffer.from(JSON.stringify(records)),
+  });
   await expect(page.getByRole("status")).toContainText("History saved");
   await expect(
     page.getByText("No genre-tagged artists are available for this period."),

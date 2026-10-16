@@ -48,6 +48,7 @@ export default function Explorer({
     [period, setPeriod] = useState<Period>("all"),
     [query, setQuery] = useState(""),
     [genre, setGenre] = useState("All genres"),
+    [previewGenre, setPreviewGenre] = useState<string | null>(null),
     [playlistId, setPlaylistId] = useState(""),
     [selected, setSelected] = useState(""),
     [mode, setMode] = useState<"3D" | "2D">("3D"),
@@ -141,6 +142,15 @@ export default function Explorer({
           artists.some((a) => genreFor(a).name === g.name),
       ),
     [artists],
+  );
+  const sceneVisible = useMemo(
+    () =>
+      previewGenre
+        ? matches
+            .filter((a) => genreFor(a).name === previewGenre)
+            .map((a) => a.id)
+        : visible,
+    [previewGenre, matches, visible],
   );
   function act(type: SceneCommand["type"]) {
     setCommand((c) => ({ type, nonce: c.nonce + 1 }));
@@ -354,13 +364,62 @@ export default function Explorer({
         <Constellation
           data={graph}
           selected={selected}
-          visible={visible}
+          visible={sceneVisible}
           theme={theme}
           mode={mode}
           rotating={rotating}
           command={command}
           onSelect={setSelected}
         />
+        {availableGenres.length > 0 && (
+          <nav className="genre-legend" aria-label="Genre legend">
+            <span className="legend-hint">
+              GENRES{" "}
+              <small className="legend-desktop-hint">
+                Hover to preview · click to focus
+              </small>
+              <small className="legend-touch-hint">
+                Tap a genre to focus · pinch to zoom
+              </small>
+            </span>
+            <div className="legend-items">
+              <button
+                className={genre === "All genres" ? "active" : ""}
+                aria-pressed={genre === "All genres"}
+                onClick={() => {
+                  setGenre("All genres");
+                  setPreviewGenre(null);
+                  setSelected("");
+                }}
+                onMouseEnter={() => setPreviewGenre(null)}
+                onFocus={() => setPreviewGenre(null)}
+              >
+                All
+              </button>
+              {availableGenres.map((g) => (
+                <button
+                  key={g.name}
+                  aria-pressed={genre === g.name}
+                  className={genre === g.name ? "active" : ""}
+                  onMouseEnter={() => setPreviewGenre(g.name)}
+                  onMouseLeave={() => setPreviewGenre(null)}
+                  onFocus={() => setPreviewGenre(g.name)}
+                  onBlur={() => setPreviewGenre(null)}
+                  onClick={() => {
+                    setGenre(genre === g.name ? "All genres" : g.name);
+                    setPreviewGenre(null);
+                    setSelected("");
+                  }}
+                >
+                  <i
+                    style={{ background: theme === "dark" ? g.color : g.light }}
+                  />
+                  {g.name}
+                </button>
+              ))}
+            </div>
+          </nav>
+        )}
         {matches.length === 0 && (
           <div className="empty-state">
             <p>
@@ -436,9 +495,11 @@ export default function Explorer({
             highlight its connections.
           </p>
           <p>
-            Colors follow genre tags, and lines connect artists with shared
-            tags. Genres overlap in one cloud. Artists without genre metadata
-            are omitted from this view.
+            Use the color legend to preview a genre or click it to focus. Only a
+            few connections appear at rest; hover or select an artist to reveal
+            more. Colors follow genre tags, and lines connect artists with
+            shared tags. Genres overlap in one cloud. Artists without genre
+            metadata are omitted from this view.
           </p>
           <p>
             <strong>All available</strong> combines retrieved top lists and
