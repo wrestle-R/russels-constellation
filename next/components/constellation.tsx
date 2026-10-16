@@ -3,15 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import * as THREE from "three";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 import type { MapData } from "../lib/constellation";
-import {
-  Plus,
-  Minus,
-  Scan,
-  Rotate3D,
-  Pause,
-  Move,
-  MousePointer2,
-} from "lucide-react";
+export type SceneCommand = { type: "reset" | "in" | "out"; nonce: number };
 type Props = {
   data: MapData;
   selected: string;
@@ -19,6 +11,8 @@ type Props = {
   theme: "light" | "dark";
   mode: "3D" | "2D";
   onSelect: (id: string) => void;
+  command: SceneCommand;
+  rotating: boolean;
 };
 type Engine = {
   camera: THREE.PerspectiveCamera;
@@ -33,12 +27,13 @@ export default function Constellation({
   theme,
   mode,
   onSelect,
+  command,
+  rotating,
 }: Props) {
   const host = useRef<HTMLDivElement>(null),
     engine = useRef<Engine | null>(null),
     props = useRef({ selected, visible: new Set(visible), theme, onSelect });
-  const [failed, setFailed] = useState(false),
-    [rotating, setRotating] = useState(false);
+  const [failed, setFailed] = useState(false);
   const rotation = useRef(false);
   useEffect(() => {
     props.current = { selected, visible: new Set(visible), theme, onSelect };
@@ -65,7 +60,7 @@ export default function Constellation({
     renderer.setClearColor(0x000000, 0);
     renderer.domElement.setAttribute(
       "aria-label",
-      "Interactive 3D artist constellation. Use Artist list for keyboard access.",
+      "Interactive artist constellation. Hover for names, drag to orbit. Artist list in More options provides keyboard access.",
     );
     renderer.domElement.setAttribute("role", "img");
     el.appendChild(renderer.domElement);
@@ -146,48 +141,6 @@ export default function Constellation({
       });
     const ring = new THREE.Mesh(ringGeo, ringMat);
     scene.add(ring);
-    const labels = document.createElement("div");
-    labels.className = "graph-labels";
-    el.appendChild(labels);
-    const groupLabels = data.groups.map((g) => {
-      const label = document.createElement("button");
-      label.className = "genre-map-label";
-      label.tabIndex = -1;
-      label.textContent = g.name;
-      labels.appendChild(label);
-      return {
-        el: label,
-        position: new THREE.Vector3(g.x, g.y, mode === "3D" ? g.z : 0),
-        genre: g,
-      };
-    });
-    const labelCandidates = [...data.nodes].sort(
-      (a, b) => b.importance - a.importance,
-    );
-    const seen = new Map<string, number>();
-    const labelsForNodes = labelCandidates.filter((n) => {
-      const count = seen.get(n.genre) || 0;
-      if (count >= 3) return false;
-      seen.set(n.genre, count + 1);
-      return true;
-    });
-    const artistLabels = labelsForNodes.map((n) => {
-      const label = document.createElement("button");
-      label.className = "artist-map-label";
-      label.textContent = n.artist.name;
-      label.tabIndex = -1;
-      label.onclick = () => props.current.onSelect(n.artist.id);
-      labels.appendChild(label);
-      return {
-        el: label,
-        node: n,
-        position: new THREE.Vector3(n.x, n.y, mode === "3D" ? n.z : 0),
-      };
-    });
-    const selectionLabel = document.createElement("button");
-    selectionLabel.className = "artist-map-label selected";
-    selectionLabel.tabIndex = -1;
-    labels.appendChild(selectionLabel);
     const tooltip = document.createElement("div");
     tooltip.className = "graph-tooltip";
     tooltip.hidden = true;
@@ -201,19 +154,6 @@ export default function Constellation({
       frame = 0,
       active = true;
     const color = new THREE.Color();
-    const projected = new THREE.Vector3();
-    function project(pos: THREE.Vector3) {
-      projected.copy(pos).project(camera);
-      return {
-        x: (projected.x * 0.5 + 0.5) * width,
-        y: (-projected.y * 0.5 + 0.5) * height,
-        show:
-          projected.z < 1 &&
-          projected.z > -1 &&
-          Math.abs(projected.x) < 0.96 &&
-          Math.abs(projected.y) < 0.94,
-      };
-    }
     function styleData() {
       const p = props.current;
       if (
@@ -231,7 +171,7 @@ export default function Constellation({
         const show = p.visible.has(n.artist.id);
         color.set(p.theme === "dark" ? n.color : n.lightColor);
         colors.set([color.r, color.g, color.b], i * 3);
-        visibility[i] = show ? (n.genre === "Unclassified" ? 0.55 : 1) : 0.035;
+        visibility[i] = show ? 1 : 0.025;
       });
       geometry.attributes.aColor.needsUpdate = true;
       geometry.attributes.aVisible.needsUpdate = true;
@@ -264,75 +204,11 @@ export default function Constellation({
         const n = data.nodes[selectedIndex];
         ring.position.set(n.x, n.y, mode === "3D" ? n.z : 0);
         ringMat.color.set(p.theme === "dark" ? n.color : n.lightColor);
-        selectionLabel.textContent = n.artist.name;
-        selectionLabel.onclick = () => p.onSelect(n.artist.id);
       }
     }
     function render() {
       styleData();
       ring.quaternion.copy(camera.quaternion);
-      const occupied: { x: number; y: number; w: number }[] = [];
-      const place = (
-        label: HTMLElement,
-        pos: THREE.Vector3,
-        w: number,
-        offset: number,
-        priority = false,
-      ) => {
-        const p = project(pos);
-        const x = p.x,
-          y = p.y + offset;
-        const conflict =
-          !priority &&
-          occupied.some(
-            (o) =>
-              Math.abs(o.x - x) < (o.w + w) / 2 + 8 && Math.abs(o.y - y) < 24,
-          );
-        const show = p.show && !conflict;
-        label.style.visibility = show ? "visible" : "hidden";
-        if (show) {
-          label.style.transform = `translate(${x}px,${y}px) translate(-50%,-50%)`;
-          occupied.push({ x, y, w });
-        }
-        return show;
-      };
-      selectionLabel.style.visibility = "hidden";
-      if (ring.visible)
-        place(
-          selectionLabel,
-          ring.position,
-          Math.min(180, selectionLabel.textContent!.length * 6.5 + 20),
-          20,
-          true,
-        );
-      groupLabels.forEach(({ el, position, genre }) => {
-        el.style.color =
-          props.current.theme === "dark" ? genre.color : genre.lightColor;
-        const relevant = data.nodes.some(
-          (n) =>
-            n.genre === genre.name && props.current.visible.has(n.artist.id),
-        );
-        if (!relevant) {
-          el.style.visibility = "hidden";
-          return;
-        }
-        place(el, position, 150, 0);
-      });
-      artistLabels.forEach(({ el, node, position }) => {
-        if (
-          node.artist.id === props.current.selected ||
-          !props.current.visible.has(node.artist.id)
-        ) {
-          el.style.visibility = "hidden";
-          return;
-        }
-        place(
-          el,
-          position,
-          Math.min(150, node.artist.name.length * 6 + 15),
-          17,
-        );
-      });
       renderer.render(scene, camera);
     }
     function reset() {
@@ -351,11 +227,12 @@ export default function Constellation({
           1.18 +
         60;
       controls.target.copy(center);
-      camera.position.set(
-        center.x,
-        center.y + (mode === "3D" ? 20 : 0),
-        center.z + distance,
-      );
+      camera.up.set(0.12, 1, 0);
+      const direction =
+        mode === "3D"
+          ? new THREE.Vector3(0.32, 0.72, 1).normalize()
+          : new THREE.Vector3(0, 0, 1);
+      camera.position.copy(center).addScaledVector(direction, distance);
       controls.update();
       render();
     }
@@ -403,8 +280,13 @@ export default function Constellation({
       )
         return;
       const hit = pick(e);
-      if (hit?.index !== undefined)
+      if (hit?.index !== undefined) {
         props.current.onSelect(data.nodes[hit.index].artist.id);
+        if (e.pointerType === "touch") hover(e);
+      } else {
+        props.current.onSelect("");
+        tooltip.hidden = true;
+      }
     };
     const hover = (e: PointerEvent) => {
       if (e.buttons) {
@@ -436,6 +318,7 @@ export default function Constellation({
     renderer.domElement.addEventListener("pointermove", hover);
     renderer.domElement.addEventListener("pointerleave", leave);
     const reduced = matchMedia("(prefers-reduced-motion: reduce)");
+    controls.enableDamping = !reduced.matches;
     const visibilityChange = () => {
       active = !document.hidden;
     };
@@ -467,11 +350,14 @@ export default function Constellation({
       ringMat.dispose();
       renderer.dispose();
       renderer.domElement.remove();
-      labels.remove();
       tooltip.remove();
       engine.current = null;
     };
   }, [data, mode]);
+  useEffect(() => {
+    if (command.type === "reset") engine.current?.reset();
+    else zoom(command.type === "in" ? 0.8 : 1.2);
+  }, [command]);
   function zoom(factor: number) {
     const e = engine.current;
     if (!e) return;
@@ -487,39 +373,10 @@ export default function Constellation({
       <div className="three-host" ref={host} />
       {failed && (
         <div className="webgl-fallback">
-          3D is unavailable in this browser. Choose Artist list above to explore
-          the complete collection.
+          3D is unavailable in this browser. Open Artist list from the top menu
+          to explore your music.
         </div>
       )}
-      <div className="graph-instructions">
-        <MousePointer2 size={13} />
-        <span>
-          {mode === "3D" ? "Drag to orbit" : "Drag to pan"}
-          <b>·</b>Scroll to zoom<b>·</b>Click an artist
-        </span>
-      </div>
-      <div className="graph-controls">
-        <button
-          aria-label={rotating ? "Pause rotation" : "Rotate constellation"}
-          aria-pressed={rotating}
-          onClick={() => setRotating(!rotating)}
-        >
-          {rotating ? <Pause size={15} /> : <Rotate3D size={16} />}
-        </button>
-        <i />
-        <button aria-label="Zoom out" onClick={() => zoom(1.2)}>
-          <Minus size={16} />
-        </button>
-        <button aria-label="Zoom in" onClick={() => zoom(0.8)}>
-          <Plus size={16} />
-        </button>
-        <button
-          aria-label="Reset constellation"
-          onClick={() => engine.current?.reset()}
-        >
-          <Scan size={16} />
-        </button>
-      </div>
     </div>
   );
 }

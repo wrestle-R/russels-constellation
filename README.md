@@ -1,6 +1,6 @@
 # Play It Back
 
-A personal music collection explorer built with Next.js and Three.js. Explore artists through genre constellations, browse albums and playlists, and switch between light and dark themes.
+A full-screen artist constellation built with Next.js and Three.js. One top bar provides search, genre and time filters, camera controls, and light/dark themes. Artist names appear on hover; colors overlap in a single angled cloud.
 
 ## Development
 
