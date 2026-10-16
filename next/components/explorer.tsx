@@ -27,6 +27,7 @@ import {
   timeLabel,
 } from "../lib/music";
 import { buildConstellation } from "../lib/constellation";
+import { applyCollectionPreferences } from "../lib/collection-exclusions";
 import { ThemeToggle, useTheme } from "./theme";
 import Dialog from "./dialog";
 import type { SceneCommand } from "./constellation";
@@ -44,7 +45,7 @@ export default function Explorer({
 }: {
   collection: Collection;
 }) {
-  const [collection, setCollection] = useState(initial),
+  const [collection, setCollection] = useState(() => applyCollectionPreferences(initial)),
     [period, setPeriod] = useState<Period>("all"),
     [query, setQuery] = useState(""),
     [genre, setGenre] = useState("All genres"),
@@ -70,7 +71,7 @@ export default function Explorer({
     import("../lib/history-import")
       .then((m) => m.loadImport())
       .then((data) => {
-        if (active && data) setCollection(data);
+        if (active && data) setCollection(applyCollectionPreferences(data));
       })
       .catch(() => {});
     return () => {
@@ -165,7 +166,9 @@ export default function Explorer({
     setError("");
     try {
       const lib = await import("../lib/history-import");
-      const data = await lib.importHistory(files, initial, setProgress);
+      const data = applyCollectionPreferences(
+        await lib.importHistory(files, initial, setProgress),
+      );
       setCollection(data);
       setPeriod("all");
       clear();
