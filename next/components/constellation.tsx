@@ -21,6 +21,7 @@ type Engine = {
   controls: OrbitControls;
   reset: () => void;
   render: () => void;
+  dismiss: () => void;
 };
 export default function Constellation({
   data,
@@ -55,6 +56,7 @@ export default function Constellation({
       playCounts,
       countScope,
     };
+    if (!selected) engine.current?.dismiss();
     engine.current?.render();
   }, [selected, visible, theme, onSelect, playCounts, countScope]);
   useEffect(() => {
@@ -74,11 +76,16 @@ export default function Constellation({
       setFailed(true);
       return;
     }
-    renderer.setPixelRatio(Math.min(devicePixelRatio, 1.7));
+    renderer.setPixelRatio(
+      Math.min(
+        devicePixelRatio,
+        matchMedia("(pointer: coarse)").matches ? 1.5 : 1.7,
+      ),
+    );
     renderer.setClearColor(0x000000, 0);
     renderer.domElement.setAttribute(
       "aria-label",
-      "Russel’s song constellation. Hover for songs, drag to orbit. Song list in More options provides keyboard access.",
+      "Russel’s song constellation. Tap or hover for songs, drag to orbit, pinch or use the zoom buttons to zoom.",
     );
     renderer.domElement.setAttribute("role", "img");
     el.appendChild(renderer.domElement);
@@ -287,11 +294,16 @@ export default function Constellation({
       const size = box.isEmpty()
         ? new THREE.Vector3(300, 250, 0)
         : box.getSize(new THREE.Vector3());
-      const distance =
+      const fitDistance =
         (Math.max(size.y / 2, size.x / 2 / camera.aspect) /
           Math.tan(THREE.MathUtils.degToRad(24))) *
           1.18 +
         60;
+      const distance = THREE.MathUtils.clamp(
+        fitDistance * (camera.aspect < 1 ? 0.66 : 0.82),
+        controls.minDistance,
+        controls.maxDistance,
+      );
       controls.target.copy(center);
       camera.up.set(0.12, 1, 0);
       const direction =
@@ -303,46 +315,74 @@ export default function Constellation({
       render();
     }
     function resize() {
-      width = el.clientWidth;
-      height = el.clientHeight;
+      const widthChanged = width > 1 && Math.abs(width - el.clientWidth) > 1;
+      width = Math.max(1, el.clientWidth);
+      height = Math.max(1, el.clientHeight);
       camera.aspect = width / height;
       camera.updateProjectionMatrix();
       renderer.setSize(width, height);
-      render();
+      tooltip.hidden = true;
+      if (widthChanged) reset();
+      else render();
     }
     const observer = new ResizeObserver(resize);
     observer.observe(el);
     resize();
     reset();
-    engine.current = { camera, controls, reset, render };
-    const raycaster = new THREE.Raycaster();
-    raycaster.params.Points.threshold = 4;
-    const mouse = new THREE.Vector2();
+    engine.current = {
+      camera,
+      controls,
+      reset,
+      render,
+      dismiss: () => {
+        hoveredIndex = -1;
+        tooltip.hidden = true;
+      },
+    };
+    controls.addEventListener("start", () => {
+      hoveredIndex = -1;
+      tooltip.hidden = true;
+    });
+    const projected = new THREE.Vector3();
+    const pointers = new Set<number>();
+    let gesture = false;
     let pointerStart = { x: 0, y: 0 };
     function pick(event: PointerEvent) {
       const rect = renderer.domElement.getBoundingClientRect();
-      mouse.set(
-        ((event.clientX - rect.left) / rect.width) * 2 - 1,
-        (-(event.clientY - rect.top) / rect.height) * 2 + 1,
-      );
-      raycaster.setFromCamera(mouse, camera);
-      const hits = raycaster
-        .intersectObject(points)
-        .filter(
-          (h) =>
-            h.index !== undefined &&
-            props.current.visible.has(data.nodes[h.index].id),
-        );
-      return hits.sort(
-        (a, b) => (a.distanceToRay || 0) - (b.distanceToRay || 0),
-      )[0];
+      const x = event.clientX - rect.left,
+        y = event.clientY - rect.top;
+      const radius = event.pointerType === "touch" ? 16 : 8;
+      let nearest = radius * radius,
+        index: number | undefined;
+      // Pick in screen pixels so touch targets stay usable at every zoom level.
+      data.nodes.forEach((node, i) => {
+        if (!props.current.visible.has(node.id)) return;
+        projected
+          .set(node.x, node.y, mode === "3D" ? node.z : 0)
+          .project(camera);
+        if (projected.z < -1 || projected.z > 1) return;
+        const dx = ((projected.x + 1) * rect.width) / 2 - x;
+        const dy = ((1 - projected.y) * rect.height) / 2 - y;
+        const distance = dx * dx + dy * dy;
+        if (distance < nearest) {
+          nearest = distance;
+          index = i;
+        }
+      });
+      return index === undefined ? undefined : { index };
     }
     const down = (e: PointerEvent) => {
-      pointerStart = { x: e.clientX, y: e.clientY };
+      pointers.add(e.pointerId);
+      if (pointers.size === 1) {
+        gesture = false;
+        pointerStart = { x: e.clientX, y: e.clientY };
+      } else gesture = true;
     };
     const up = (e: PointerEvent) => {
+      pointers.delete(e.pointerId);
       if (
-        Math.hypot(e.clientX - pointerStart.x, e.clientY - pointerStart.y) > 5
+        gesture ||
+        Math.hypot(e.clientX - pointerStart.x, e.clientY - pointerStart.y) > 8
       )
         return;
       const hit = pick(e);
@@ -351,13 +391,20 @@ export default function Constellation({
         if (e.pointerType === "touch") hover(e);
       } else {
         props.current.onSelect("");
+        hoveredIndex = -1;
         tooltip.hidden = true;
+        render();
       }
     };
     const hover = (e: PointerEvent) => {
       if (e.buttons) {
+        if (
+          Math.hypot(e.clientX - pointerStart.x, e.clientY - pointerStart.y) > 8
+        )
+          gesture = true;
         hoveredIndex = -1;
         tooltip.hidden = true;
+        render();
         return;
       }
       const hit = pick(e);
@@ -387,21 +434,42 @@ export default function Constellation({
             props.current.countScope;
           tooltip.append(detail);
         }
-        tooltip.style.left =
-          Math.max(10, Math.min(width - 210, e.clientX - rect.left + 15)) +
-          "px";
-        tooltip.style.top = Math.max(10, e.clientY - rect.top - 38) + "px";
         tooltip.hidden = false;
+        const tooltipWidth = tooltip.offsetWidth,
+          tooltipHeight = tooltip.offsetHeight;
+        tooltip.style.left =
+          Math.max(
+            10,
+            Math.min(width - tooltipWidth - 10, e.clientX - rect.left + 15),
+          ) + "px";
+        tooltip.style.top =
+          Math.max(
+            10,
+            Math.min(
+              height - tooltipHeight - 10,
+              e.clientY - rect.top - tooltipHeight - 18,
+            ),
+          ) + "px";
       } else tooltip.hidden = true;
+      render();
     };
-    const leave = () => {
+    const leave = (event?: PointerEvent) => {
+      // Touch emits pointerleave as soon as a finger lifts; keep the tapped song open.
+      if (event?.pointerType === "touch") return;
       hoveredIndex = -1;
       tooltip.hidden = true;
+      render();
+    };
+    const cancel = (e: PointerEvent) => {
+      pointers.delete(e.pointerId);
+      gesture = true;
+      leave();
     };
     renderer.domElement.addEventListener("pointerdown", down);
     renderer.domElement.addEventListener("pointerup", up);
     renderer.domElement.addEventListener("pointermove", hover);
     renderer.domElement.addEventListener("pointerleave", leave);
+    renderer.domElement.addEventListener("pointercancel", cancel);
     const reduced = matchMedia("(prefers-reduced-motion: reduce)");
     controls.enableDamping = !reduced.matches;
     const visibilityChange = () => {
@@ -413,8 +481,7 @@ export default function Constellation({
       if (!active) return;
       controls.autoRotate =
         rotation.current && !reduced.matches && mode === "3D";
-      controls.update();
-      render();
+      if (controls.update()) render();
     };
     tick();
     const contextLost = (e: Event) => {
@@ -441,15 +508,15 @@ export default function Constellation({
   }, [data, mode]);
   useEffect(() => {
     if (command.type === "reset") engine.current?.reset();
-    else zoom(command.type === "in" ? 0.8 : 1.2);
+    else zoom(command.type === "in" ? 0.8 : 1.25);
   }, [command]);
   function zoom(factor: number) {
     const e = engine.current;
     if (!e) return;
     const offset = e.camera.position.clone().sub(e.controls.target);
-    offset.multiplyScalar(factor);
-    if (offset.length() < 65 || offset.length() > 1600) return;
+    offset.setLength(THREE.MathUtils.clamp(offset.length() * factor, 65, 1600));
     e.camera.position.copy(e.controls.target).add(offset);
+    e.dismiss();
     e.controls.update();
     e.render();
   }
@@ -458,8 +525,8 @@ export default function Constellation({
       <div className="three-host" ref={host} />
       {failed && (
         <div className="webgl-fallback">
-          3D is unavailable in this browser. Open Artist list from the top menu
-          to explore your music.
+          The constellation needs 3D graphics support. Try enabling graphics
+          acceleration or opening it in another browser.
         </div>
       )}
     </div>
