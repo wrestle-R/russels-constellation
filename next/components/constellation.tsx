@@ -376,16 +376,17 @@ export default function Constellation({
         title.textContent = n.track.name;
         const artist = document.createElement("span");
         artist.textContent = n.artist.name + " · " + n.genre;
-        const detail = document.createElement("small");
-        detail.textContent =
-          count === undefined
-            ? "Play count unavailable · import history"
-            : count +
-              " recorded " +
-              (count === 1 ? "play" : "plays") +
-              " · " +
-              props.current.countScope;
-        tooltip.append(title, artist, detail);
+        tooltip.append(title, artist);
+        if (count !== undefined) {
+          const detail = document.createElement("small");
+          detail.textContent =
+            count +
+            " recorded " +
+            (count === 1 ? "play" : "plays") +
+            " · " +
+            props.current.countScope;
+          tooltip.append(detail);
+        }
         tooltip.style.left =
           Math.max(10, Math.min(width - 210, e.clientX - rect.left + 15)) +
           "px";
