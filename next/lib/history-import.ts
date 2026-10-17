@@ -52,8 +52,11 @@ export async function importHistory(
     throw Error(
       "No Spotify streaming-history JSON files found. Choose your Spotify history ZIP or JSON files.",
     );
+  const normalizeArtist = (name: string) =>
+    name.normalize("NFKC").trim().toLowerCase();
+  const knownArtistsById = new Map(base.artists.map((a) => [a.id, a]));
   const knownArtists = new Map(
-      base.artists.map((a) => [a.name.toLowerCase(), a]),
+      base.artists.map((a) => [normalizeArtist(a.name), a]),
     ),
     knownTracks = new Map(base.tracks.map((t) => [t.id, t]));
   const artists = new Map<string, Artist>(),
@@ -96,11 +99,12 @@ export async function importHistory(
       const id = /^spotify:track:[a-zA-Z0-9]+$/.test(uri)
         ? uri.split(":")[2]
         : "import:" + artistName + ":" + name;
-      const key = id + "@" + timestamp;
+      const playedAt = new Date(timestamp).toISOString();
+      const key = id + "@" + playedAt;
       if (seen.has(key)) continue;
       seen.add(key);
       const old = knownTracks.get(id);
-      const artist = knownArtists.get(artistName.toLowerCase()) || {
+      const artist = knownArtists.get(normalizeArtist(artistName)) || {
         id: "import:" + artistName.toLowerCase(),
         name: artistName,
         url:
@@ -108,20 +112,25 @@ export async function importHistory(
         genres: [],
       };
       artists.set(artist.id, artist);
+      const artistIds = [...new Set([artist.id, ...(old?.artistIds || [])])];
+      for (const id of artistIds) {
+        const credited = knownArtistsById.get(id);
+        if (credited) artists.set(id, credited);
+      }
       const albumId = old?.albumId || "import:" + artistName + ":" + albumName;
       const track: Track = old
         ? {
             ...old,
             artist: artistName,
             artistId: artist.id,
-            artistIds: [artist.id],
+            artistIds,
           }
         : {
             id,
             name,
             artist: artistName,
             artistId: artist.id,
-            artistIds: [artist.id],
+            artistIds,
             album: albumName,
             albumId,
             url: uri
@@ -140,7 +149,7 @@ export async function importHistory(
           "https://open.spotify.com/search/" +
           encodeURIComponent(track.album + " " + artistName),
       });
-      plays.push({ trackId: id, playedAt: new Date(timestamp).toISOString() });
+      plays.push({ trackId: id, playedAt });
       processed++;
       if (processed % 4000 === 0) {
         progress("Read " + processed.toLocaleString() + " listening events…");

@@ -2,6 +2,7 @@ import { test, expect } from "@playwright/test";
 import { buildConstellation, playShade } from "../lib/constellation";
 import {
   recordedPlayCounts,
+  tracksForPeriod,
   type Artist,
   type Track,
   type Collection,
@@ -107,4 +108,31 @@ test("hosted aggregate counts retain period-specific values without raw listenin
   expect(recordedPlayCounts(collection, "all")).toEqual({ song: 7 });
   expect(recordedPlayCounts(collection, "short_term")).toEqual({ song: 2 });
   expect(recordedPlayCounts(collection, "medium_term")).toEqual({ song: 4 });
+});
+
+test("published history uses aggregate counts when the private event timeline is absent", () => {
+  const collection: Collection = {
+    version: 2,
+    source: "import",
+    fetchedAt: "",
+    artists,
+    tracks,
+    albums: [],
+    playlists: [],
+    top: {},
+    status: {},
+    playCountSnapshot: {
+      all: { a1: 20, a2: 3 },
+      short_term: { a2: 3 },
+      medium_term: { a1: 4, a2: 3 },
+    },
+  };
+  expect(recordedPlayCounts(collection, "all")).toEqual({ a1: 20, a2: 3 });
+  expect(tracksForPeriod(collection, "short_term").map((t) => t.id)).toEqual([
+    "a2",
+  ]);
+  expect(tracksForPeriod(collection, "medium_term").map((t) => t.id)).toEqual([
+    "a1",
+    "a2",
+  ]);
 });

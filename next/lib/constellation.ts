@@ -27,7 +27,17 @@ const homes: Record<string, [number, number, number]> = {
   Rock: [-145, -40, -5],
   "Folk & acoustic": [-85, -115, 5],
   "Jazz & classical": [155, -100, -10],
-  Global: [175, 120, 10],
+  Bollywood: [175, 80, 10],
+  "Hindi pop": [155, 140, 5],
+  "Punjabi & bhangra": [190, 15, 5],
+  "Tamil & Telugu": [190, 155, 0],
+  Afrobeats: [100, -40, 10],
+  "Latin & reggaeton": [-5, -140, 5],
+  "Reggae & dancehall": [-50, -60, 0],
+  "J-pop": [0, 110, -5],
+  "Indian classical": [185, -65, -10],
+  "Sufi & qawwali": [170, -20, 5],
+  "Film & TV": [115, -135, -5],
 };
 function hash(text: string) {
   let h = 2166136261;

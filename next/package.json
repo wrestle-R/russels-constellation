@@ -11,7 +11,8 @@
     "test:e2e": "playwright test",
     "format": "prettier --write app components lib scripts tests playwright.config.ts",
     "genres:enrich": "node scripts/enrich-genres.mjs",
-    "showcase:capture": "tsx scripts/capture-showcase.ts"
+    "showcase:capture": "tsx scripts/capture-showcase.ts",
+    "history:import": "tsx scripts/import-history.ts"
   },
   "dependencies": {
     "@fontsource-variable/dm-sans": "^5.3.0",

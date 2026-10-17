@@ -15,7 +15,7 @@ async function main() {
   );
   const result: Collection = {
     version: 2,
-    source: "spotify",
+    source: collection.source,
     fetchedAt: collection.fetchedAt,
     tracks: collection.tracks.map((t) => ({
       id: t.id,
@@ -56,7 +56,9 @@ async function main() {
         recordedPlayCounts(collection, p),
       ]),
     ) as Record<Period, Record<string, number>>,
-    recordedEventCount: collection.recent?.length || 0,
+    recordedEventCount: Object.values(
+      recordedPlayCounts(collection, "all"),
+    ).reduce((total, count) => total + count, 0),
   };
   await writeFile(
     new URL("../lib/showcase-data.json", import.meta.url),

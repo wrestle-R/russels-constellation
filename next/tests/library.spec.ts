@@ -173,7 +173,7 @@ for (const size of [
       expect(before.equals(await canvas.screenshot())).toBe(false);
       await page.getByRole("button", { name: "Zoom out", exact: true }).tap();
       const legend = page.getByRole("navigation", { name: "Genre legend" });
-      for (const name of ["Pop", "Rock", "Global", "All"]) {
+      for (const name of ["Pop", "Rock", "Bollywood", "All"]) {
         const button = legend.getByRole("button", { name, exact: true });
         await button.scrollIntoViewIfNeeded();
         await button.tap();

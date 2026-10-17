@@ -22,7 +22,7 @@ let cursor = 0,
 const isGenre =
   /pop|rock|hip.?hop|rap|r&b|rnb|soul|funk|electro|house|techno|ambient|indie|folk|country|jazz|classical|metal|punk|reggae|latin|bollywood|desi|hindi|punjabi|tamil|telugu|afro|singer.songwriter|acoustic|soundtrack|dance|trance|drill|grime|shoegaze|[kj]-pop/i;
 await Promise.all(
-  Array.from({ length: 3 }, async () => {
+  Array.from({ length: Math.min(6, Math.max(1, Number(process.argv[3]) || 3)) }, async () => {
     while (cursor < pending.length) {
       const a = pending[cursor++];
       try {
