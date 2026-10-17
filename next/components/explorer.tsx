@@ -142,11 +142,6 @@ export default function Explorer({
           rotating={false}
           command={command}
           playCounts={playCounts}
-          countScope={
-            collection.source === "import"
-              ? "imported history"
-              : "recent snapshot only"
-          }
           onSelect={setSelected}
         />
         <div

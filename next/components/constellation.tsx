@@ -14,7 +14,6 @@ type Props = {
   command: SceneCommand;
   rotating: boolean;
   playCounts: Record<string, number>;
-  countScope: string;
 };
 type Engine = {
   camera: THREE.PerspectiveCamera;
@@ -33,7 +32,6 @@ export default function Constellation({
   command,
   rotating,
   playCounts,
-  countScope,
 }: Props) {
   const host = useRef<HTMLDivElement>(null),
     engine = useRef<Engine | null>(null),
@@ -43,7 +41,6 @@ export default function Constellation({
       theme,
       onSelect,
       playCounts,
-      countScope,
     });
   const [failed, setFailed] = useState(false);
   const rotation = useRef(false);
@@ -54,11 +51,10 @@ export default function Constellation({
       theme,
       onSelect,
       playCounts,
-      countScope,
     };
     if (!selected) engine.current?.dismiss();
     engine.current?.render();
-  }, [selected, visible, theme, onSelect, playCounts, countScope]);
+  }, [selected, visible, theme, onSelect, playCounts]);
   useEffect(() => {
     rotation.current = rotating;
   }, [rotating]);
@@ -437,11 +433,7 @@ export default function Constellation({
         if (count !== undefined) {
           const detail = document.createElement("small");
           detail.textContent =
-            count +
-            " recorded " +
-            (count === 1 ? "play" : "plays") +
-            " · " +
-            props.current.countScope;
+            count + " recorded " + (count === 1 ? "play" : "plays");
           tooltip.append(detail);
         }
         tooltip.hidden = false;
