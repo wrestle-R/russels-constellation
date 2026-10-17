@@ -138,10 +138,10 @@ export function playShade(count: number | undefined, max: number) {
         (0.5 * Math.log1p(Math.max(0, count))) / Math.log1p(Math.max(1, max));
 }
 
-// Keep listening emphasis gentle: unknown counts use the base size, while
-// recorded counts vary from 10% smaller to 12% larger on a logarithmic scale.
+// More plays gently increase the base size, capped at 15% larger.
+// Unknown counts retain the base size; logarithmic scaling avoids oversized dots.
 export function playSize(count: number | undefined, max: number) {
   if (count === undefined) return 1;
   const ratio = Math.log1p(Math.max(0, count)) / Math.log1p(Math.max(1, max));
-  return 0.9 + 0.22 * Math.min(1, ratio);
+  return 1 + 0.15 * Math.min(1, ratio);
 }

@@ -13,6 +13,14 @@ async function main() {
       .flatMap((t) => [t.artistId, ...(t.artistIds || [])])
       .filter(Boolean),
   );
+  const albumImages = new Map(
+    collection.tracks
+      .filter((t) => t.image)
+      .map((t) => [
+        (t.artistId || t.artist) + "|" + t.album.trim().toLowerCase(),
+        t.image,
+      ]),
+  );
   const result: Collection = {
     version: 2,
     source: collection.source,
@@ -25,6 +33,11 @@ async function main() {
       artistIds: t.artistIds,
       album: t.album,
       albumId: t.albumId,
+      image:
+        t.image ||
+        albumImages.get(
+          (t.artistId || t.artist) + "|" + t.album.trim().toLowerCase(),
+        ),
       url: t.url,
       duration: t.duration,
     })),

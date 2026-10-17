@@ -713,3 +713,59 @@ svg {
     right: 322px;
   }
 }
+
+.song-details-hero {
+  margin-bottom: 20px;
+}
+.song-artwork {
+  aspect-ratio: 1;
+  width: 100%;
+  overflow: hidden;
+  border-radius: 9px;
+  background: var(--surface-2);
+  margin-bottom: 16px;
+}
+.song-artwork img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.artwork-fallback {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  height: 100%;
+  color: var(--muted);
+}
+.artwork-fallback span {
+  font-size: 9px;
+  text-align: center;
+}
+.song-details-copy {
+  min-width: 0;
+}
+.song-details-copy .song-details-artist {
+  margin-bottom: 0;
+}
+@media (max-width: 680px), (pointer: coarse) {
+  .song-details-hero {
+    display: grid;
+    grid-template-columns: 82px minmax(0, 1fr);
+    gap: 14px;
+    align-items: center;
+    margin: 4px 0 18px;
+  }
+  .song-artwork {
+    margin: 0;
+    border-radius: 7px;
+  }
+  .artwork-fallback span {
+    display: none;
+  }
+  .song-details-copy h2 {
+    font-size: 18px;
+  }
+}

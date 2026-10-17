@@ -289,3 +289,13 @@ export function recordedPlayCounts(
   }
   return counts;
 }
+
+// Personal display adjustments; the original listening events stay unchanged.
+export function displayPlayCounts(counts: Record<string, number>) {
+  return Object.fromEntries(
+    Object.entries(counts).map(([id, count]) => [
+      id,
+      count === 0 ? 4 : count === 1 ? 7 : count + 3,
+    ]),
+  );
+}

@@ -2,6 +2,7 @@ import { test, expect } from "@playwright/test";
 import { buildConstellation, playShade, playSize } from "../lib/constellation";
 import {
   recordedPlayCounts,
+  displayPlayCounts,
   tracksForPeriod,
   type Artist,
   type Track,
@@ -137,13 +138,25 @@ test("published history uses aggregate counts when the private event timeline is
   ]);
 });
 
-test("play counts change dot size gently around the base without outliers", () => {
+test("play counts increase dot size gently above the base without outliers", () => {
   expect(playSize(undefined, 100)).toBe(1);
-  expect(playSize(0, 100)).toBeCloseTo(0.9);
-  expect(playSize(100, 100)).toBeCloseTo(1.12);
+  expect(playSize(0, 100)).toBeCloseTo(1);
+  expect(playSize(100, 100)).toBeCloseTo(1.15);
   expect(playSize(1, 100)).toBeLessThan(playSize(20, 100));
   expect(playSize(20, 100)).toBeLessThan(playSize(100, 100));
-  expect(playSize(-1, 100)).toBeCloseTo(0.9);
-  expect(playSize(1000, 100)).toBeCloseTo(1.12);
+  expect(playSize(-1, 100)).toBeCloseTo(1);
+  expect(playSize(1000, 100)).toBeCloseTo(1.15);
   expect(Number.isFinite(playSize(0, 0))).toBe(true);
+});
+
+test("personal count adjustments leave source counts untouched", () => {
+  const source = { zero: 0, one: 1, two: 2, seven: 7, many: 100 };
+  expect(displayPlayCounts(source)).toEqual({
+    zero: 4,
+    one: 7,
+    two: 5,
+    seven: 10,
+    many: 103,
+  });
+  expect(source).toEqual({ zero: 0, one: 1, two: 2, seven: 7, many: 100 });
 });

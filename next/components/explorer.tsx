@@ -2,11 +2,17 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import { Maximize, Minimize, Plus, Minus, LoaderCircle, X } from "lucide-react";
-import { type Collection, genres, recordedPlayCounts } from "../lib/music";
+import {
+  type Collection,
+  genres,
+  recordedPlayCounts,
+  displayPlayCounts,
+} from "../lib/music";
 import { buildConstellation } from "../lib/constellation";
 import { applyCollectionPreferences } from "../lib/collection-exclusions";
 import { ThemeToggle, useTheme } from "./theme";
 import type { SceneCommand } from "./constellation";
+import AlbumArtwork from "./album-artwork";
 const Constellation = dynamic(() => import("./constellation"), {
   ssr: false,
   loading: () => (
@@ -64,7 +70,7 @@ export default function Explorer({
     [collection],
   );
   const playCounts = useMemo(
-    () => recordedPlayCounts(collection, "all"),
+    () => displayPlayCounts(recordedPlayCounts(collection, "all")),
     [collection],
   );
   const selectedSong = graph.nodes.find((node) => node.id === selected);
@@ -258,19 +264,26 @@ export default function Explorer({
                 <X size={17} />
               </button>
             </div>
-            <span
-              className="song-details-genre"
-              style={{
-                color:
-                  theme === "dark"
-                    ? selectedSong.color
-                    : selectedSong.lightColor,
-              }}
-            >
-              {selectedSong.genre}
-            </span>
-            <h2 id="song-details-title">{selectedSong.track.name}</h2>
-            <p className="song-details-artist">{selectedSong.artist.name}</p>
+            <div className="song-details-hero">
+              <AlbumArtwork key={selectedSong.id} track={selectedSong.track} />
+              <div className="song-details-copy">
+                <span
+                  className="song-details-genre"
+                  style={{
+                    color:
+                      theme === "dark"
+                        ? selectedSong.color
+                        : selectedSong.lightColor,
+                  }}
+                >
+                  {selectedSong.genre}
+                </span>
+                <h2 id="song-details-title">{selectedSong.track.name}</h2>
+                <p className="song-details-artist">
+                  {selectedSong.artist.name}
+                </p>
+              </div>
+            </div>
             <dl>
               <div>
                 <dt>Album</dt>
