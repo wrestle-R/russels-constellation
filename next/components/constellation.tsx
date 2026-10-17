@@ -2,7 +2,7 @@
 import { useEffect, useRef, useState } from "react";
 import * as THREE from "three";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
-import { playShade, type MapData } from "../lib/constellation";
+import { playShade, playSize, type MapData } from "../lib/constellation";
 export type SceneCommand = { type: "reset" | "in" | "out"; nonce: number };
 type Props = {
   data: MapData;
@@ -217,6 +217,7 @@ export default function Constellation({
         color.set(p.theme === "dark" ? n.color : n.lightColor);
         color.multiplyScalar(playShade(p.playCounts[n.id], maxPlays));
         colors.set([color.r, color.g, color.b], i * 3);
+        sizes[i] = n.size * playSize(p.playCounts[n.id], maxPlays);
         visibility[i] = show
           ? neighbors.size
             ? neighbors.has(i)
@@ -227,6 +228,7 @@ export default function Constellation({
             : 0.9
           : 0.035;
       });
+      geometry.attributes.aSize.needsUpdate = true;
       geometry.attributes.aColor.needsUpdate = true;
       geometry.attributes.aVisible.needsUpdate = true;
       let drawnEdges = 0;
@@ -401,6 +403,38 @@ export default function Constellation({
         render();
       }
     };
+    let tooltipAnchor = { x: 0, y: 0 };
+    function movingToCard(e: PointerEvent) {
+      if (e.pointerType !== "mouse" || tooltip.hidden || hoveredIndex < 0)
+        return false;
+      const r = tooltip.getBoundingClientRect();
+      const a = tooltipAnchor;
+      const edge =
+        a.y >= r.bottom
+          ? [
+              { x: r.left - 3, y: r.bottom },
+              { x: r.right + 3, y: r.bottom },
+            ]
+          : a.y <= r.top
+            ? [
+                { x: r.left - 3, y: r.top },
+                { x: r.right + 3, y: r.top },
+              ]
+            : [
+                { x: a.x < r.left ? r.left : r.right, y: r.top - 3 },
+                { x: a.x < r.left ? r.left : r.right, y: r.bottom + 3 },
+              ];
+      const cross = (
+        p: { x: number; y: number },
+        q: { x: number; y: number },
+      ) => (e.clientX - q.x) * (p.y - q.y) - (p.x - q.x) * (e.clientY - q.y);
+      const sides = [
+        cross(a, edge[0]),
+        cross(edge[0], edge[1]),
+        cross(edge[1], a),
+      ];
+      return !(sides.some((n) => n < 0) && sides.some((n) => n > 0));
+    }
     const hover = (e: PointerEvent) => {
       touchFocus = e.pointerType === "touch";
       if (e.buttons) {
@@ -413,6 +447,8 @@ export default function Constellation({
         render();
         return;
       }
+      // Keep the label stable while the pointer crosses the gap to its card.
+      if (movingToCard(e)) return;
       const hit = pick(e);
       hoveredIndex = hit?.index ?? -1;
       renderer.domElement.style.cursor = hit
@@ -423,19 +459,14 @@ export default function Constellation({
       if (hit?.index !== undefined) {
         const n = data.nodes[hit.index],
           rect = el.getBoundingClientRect();
+        tooltipAnchor = { x: e.clientX, y: e.clientY };
         const count = props.current.playCounts[n.id];
         tooltip.replaceChildren();
         const title = document.createElement("strong");
-        title.textContent = n.track.name;
-        const artist = document.createElement("span");
-        artist.textContent = n.artist.name + " · " + n.genre;
-        tooltip.append(title, artist);
-        if (count !== undefined) {
-          const detail = document.createElement("small");
-          detail.textContent =
-            count + " recorded " + (count === 1 ? "play" : "plays");
-          tooltip.append(detail);
-        }
+        title.textContent =
+          n.track.name + (count === undefined ? "" : " (" + count + ")");
+        tooltip.append(title);
+        tooltip.setAttribute("aria-label", "Open details for " + n.track.name);
         tooltip.hidden = false;
         const tooltipWidth = tooltip.offsetWidth,
           tooltipHeight = tooltip.offsetHeight;
@@ -456,6 +487,11 @@ export default function Constellation({
       render();
     };
     const leave = (event?: PointerEvent) => {
+      if (
+        event?.relatedTarget instanceof Node &&
+        tooltip.contains(event.relatedTarget)
+      )
+        return;
       // Touch emits pointerleave as soon as a finger lifts; keep the tapped song open.
       if (event?.pointerType === "touch") return;
       hoveredIndex = -1;
@@ -467,6 +503,22 @@ export default function Constellation({
       gesture = true;
       leave();
     };
+    const openDetails = () => {
+      if (hoveredIndex >= 0)
+        props.current.onSelect(data.nodes[hoveredIndex].id);
+      tooltip.hidden = true;
+    };
+    const tooltipKey = (event: KeyboardEvent) => {
+      if (event.key === "Enter" || event.key === " ") {
+        event.preventDefault();
+        openDetails();
+      }
+    };
+    tooltip.setAttribute("role", "button");
+    tooltip.tabIndex = 0;
+    tooltip.addEventListener("click", openDetails);
+    tooltip.addEventListener("keydown", tooltipKey);
+    tooltip.addEventListener("pointerleave", () => leave());
     renderer.domElement.addEventListener("pointerdown", down);
     renderer.domElement.addEventListener("pointerup", up);
     renderer.domElement.addEventListener("pointermove", hover);

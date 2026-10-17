@@ -10,16 +10,16 @@ test("specific genre tags replace the geographic catch-all without guessing nati
   expect(family("indian indie", "hindi indie")).toBe("Indie & alternative");
   expect(family("pop", "indie acoustic pop")).toBe("Indie & alternative");
   expect(family("desi hip hop", "indian indie")).toBe("Hip-hop");
-  expect(family("punjabi", "bhangra")).toBe("Punjabi & bhangra");
-  expect(family("tamil", "soundtrack")).toBe("Tamil & Telugu");
+  expect(family("punjabi", "bhangra")).toBe("Bollywood");
+  expect(family("tamil", "soundtrack")).toBe("Bollywood");
   expect(family("afrobeats", "hip hop")).toBe("Afrobeats");
-  expect(family("latin pop", "reggaeton")).toBe("Latin & reggaeton");
-  expect(family("reggae", "dancehall")).toBe("Reggae & dancehall");
-  expect(family("j-pop")).toBe("J-pop");
-  expect(family("carnatic", "classical")).toBe("Indian classical");
-  expect(family("soundtrack")).toBe("Film & TV");
+  expect(family("latin pop", "reggaeton")).toBe("Reggae");
+  expect(family("reggae", "dancehall")).toBe("Reggae");
+  expect(family("j-pop")).toBe("Pop");
+  expect(family("carnatic", "classical")).toBe("Jazz & classical");
+  expect(family("soundtrack")).toBe("Jazz & classical");
   expect(family("indian pop")).toBe("Pop");
-  expect(family("qawwali")).toBe("Sufi & qawwali");
+  expect(family("qawwali")).toBe("Bollywood");
   expect(family("amapiano")).toBe("Electronic");
   expect(family("dub techno")).toBe("Electronic");
   expect(family("country: dominica")).toBe("Unclassified");
@@ -33,7 +33,9 @@ test("every named genre has a valid overlapping home", () => {
       id: String(i),
       name: g.name,
       url: "",
-      genres: [g.name === "Film & TV" ? "soundtrack" : g.name.toLowerCase()],
+      genres: [
+        g.name === "Jazz & classical" ? "soundtrack" : g.name.toLowerCase(),
+      ],
     }));
   const tracks = artists.map((a) => ({
     id: a.id,

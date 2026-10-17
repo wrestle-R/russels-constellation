@@ -1,5 +1,5 @@
 import { test, expect } from "@playwright/test";
-import { buildConstellation, playShade } from "../lib/constellation";
+import { buildConstellation, playShade, playSize } from "../lib/constellation";
 import {
   recordedPlayCounts,
   tracksForPeriod,
@@ -135,4 +135,15 @@ test("published history uses aggregate counts when the private event timeline is
     "a1",
     "a2",
   ]);
+});
+
+test("play counts change dot size gently around the base without outliers", () => {
+  expect(playSize(undefined, 100)).toBe(1);
+  expect(playSize(0, 100)).toBeCloseTo(0.9);
+  expect(playSize(100, 100)).toBeCloseTo(1.12);
+  expect(playSize(1, 100)).toBeLessThan(playSize(20, 100));
+  expect(playSize(20, 100)).toBeLessThan(playSize(100, 100));
+  expect(playSize(-1, 100)).toBeCloseTo(0.9);
+  expect(playSize(1000, 100)).toBeCloseTo(1.12);
+  expect(Number.isFinite(playSize(0, 0))).toBe(true);
 });

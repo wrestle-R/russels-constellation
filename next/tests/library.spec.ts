@@ -69,8 +69,8 @@ test("desktop keeps only name, fullscreen, theme and zoom, with all-time genre p
   const legend = page.getByRole("navigation", { name: "Genre legend" });
   const first = legend.getByRole("button").nth(1),
     second = legend.getByRole("button").nth(2);
-  const firstName = (await first.textContent())!.trim(),
-    secondName = (await second.textContent())!.trim();
+  const firstName = (await first.getAttribute("aria-label"))!.trim(),
+    secondName = (await second.getAttribute("aria-label"))!.trim();
   await first.click();
   await expect(first).toHaveAttribute("aria-pressed", "true");
   await second.hover();
@@ -202,7 +202,7 @@ for (const size of [
   });
 }
 
-test("real touch gestures swipe genres, orbit, pinch, and tap songs without accidental gesture selections", async ({
+test("real touch gestures keep the two-row legend fixed, orbit, pinch, and tap songs without accidental gesture selections", async ({
   browser,
 }) => {
   const context = await browser.newContext({
@@ -224,7 +224,7 @@ test("real touch gestures swipe genres, orbit, pinch, and tap songs without acci
       { x: stripBox.x + stripBox.width - 30, y: stripBox.y + 22 },
       { x: stripBox.x + 30, y: stripBox.y + 22 },
     );
-    expect(await strip.evaluate((el) => el.scrollLeft)).toBeGreaterThan(30);
+    expect(await strip.evaluate((el) => el.scrollLeft)).toBe(0);
     await expect(page.locator(".universe")).toHaveAttribute(
       "data-genre",
       "All genres",
@@ -280,6 +280,9 @@ test("real touch gestures swipe genres, orbit, pinch, and tap songs without acci
     await page.screenshot({ path: "output/mobile-song-tap.png" });
     await page.touchscreen.tap(10, box.y + 10);
     await expect(page.locator(".graph-tooltip")).toBeHidden();
+    await expect(page.getByRole("complementary", { name: /.+/ })).toHaveCount(
+      0,
+    );
     await page.setViewportSize({ width: 844, height: 390 });
     await expect(canvas).toBeVisible();
     await noOverflow(page);

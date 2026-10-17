@@ -65,7 +65,7 @@ export const genres = [
     name: "Pop",
     color: "#56d487",
     light: "#16834a",
-    match: /pop|boy band|girl group|teen|idol/,
+    match: /pop|boy band|girl group|teen|idol|city pop/,
   },
   {
     name: "Indie & alternative",
@@ -108,31 +108,22 @@ export const genres = [
     name: "Jazz & classical",
     color: "#bda2df",
     light: "#815da9",
-    match: /jazz|classical|orchestra|piano|instrumental/,
+    match:
+      /jazz|classical|orchestra|piano|instrumental|hindustani|carnatic|\braga\b|^soundtracks?$|film score|movie score|motion picture soundtrack|showtunes|musical theatre/,
   },
   {
     name: "Bollywood",
     color: "#e0b1d1",
     light: "#9d5686",
-    match: /bollywood|filmi/,
+    match:
+      /bollywood|filmi|hindi|hindie|punjabi|bhangra|tamil|telugu|kollywood|tollywood|qawwali|sufi/,
   },
   {
-    name: "Hindi pop",
-    color: "#f1b49c",
-    light: "#ad6145",
-    match: /hindi|hindie/,
-  },
-  {
-    name: "Punjabi & bhangra",
-    color: "#e5cd75",
-    light: "#8a701c",
-    match: /punjabi|bhangra/,
-  },
-  {
-    name: "Tamil & Telugu",
-    color: "#beccaa",
-    light: "#627946",
-    match: /tamil|telugu|kollywood|tollywood/,
+    name: "Reggae",
+    color: "#98cc7c",
+    light: "#4e802d",
+    match:
+      /reggae|dancehall|^dub$|latin|reggaeton|bossa|salsa|bachata|samba|cumbia/,
   },
   {
     name: "Afrobeats",
@@ -140,51 +131,12 @@ export const genres = [
     light: "#916423",
     match: /afrobeat|afro.fusion|afropop/,
   },
-  {
-    name: "Latin & reggaeton",
-    color: "#f0a078",
-    light: "#a85927",
-    match: /latin|reggaeton|bossa|salsa|bachata|samba|cumbia/,
-  },
-  {
-    name: "Reggae & dancehall",
-    color: "#98cc7c",
-    light: "#4e802d",
-    match: /reggae|dancehall|^dub$/,
-  },
-  {
-    name: "J-pop",
-    color: "#c4a4eb",
-    light: "#8052b0",
-    match: /j[ -]?pop|japanese pop|city pop/,
-  },
-  {
-    name: "Indian classical",
-    color: "#b3badf",
-    light: "#6473a4",
-    match: /hindustani|carnatic|indian classical|raga/,
-  },
-  {
-    name: "Sufi & qawwali",
-    color: "#b9c8c7",
-    light: "#577c79",
-    match: /qawwali|sufi/,
-  },
-  {
-    name: "Film & TV",
-    color: "#8fbfc4",
-    light: "#417b85",
-    match:
-      /^soundtracks?$|film score|movie score|motion picture soundtrack|showtunes|musical theatre/,
-  },
   { name: "Unclassified", color: "#8797a0", light: "#5c6d76", match: /$a/ },
 ];
-// Specific musical tags take precedence over generic pop/dance tags. Artist
-// nationality alone is not a genre, and no catch-all geographic family is used.
+// These are the owner's compact collection groups. Original artist tags remain
+// intact, including styles combined under the Bollywood and Reggae labels.
 export function genreFor(a: Artist) {
-  const order = [
-    8, 16, 17, 12, 13, 14, 15, 1, 2, 3, 4, 5, 6, 18, 7, 10, 11, 9, 0,
-  ];
+  const order = [10, 9, 1, 2, 3, 4, 5, 6, 7, 8, 0];
   const tags = a.genres
     .map((tag) => tag.trim().toLowerCase())
     .filter((tag) => !/^(country|language|location|nationality)\s*:/.test(tag));

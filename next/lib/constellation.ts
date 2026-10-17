@@ -27,17 +27,9 @@ const homes: Record<string, [number, number, number]> = {
   Rock: [-145, -40, -5],
   "Folk & acoustic": [-85, -115, 5],
   "Jazz & classical": [155, -100, -10],
-  Bollywood: [175, 80, 10],
-  "Hindi pop": [155, 140, 5],
-  "Punjabi & bhangra": [190, 15, 5],
-  "Tamil & Telugu": [190, 155, 0],
+  Bollywood: [175, 100, 10],
+  Reggae: [-40, -85, 5],
   Afrobeats: [100, -40, 10],
-  "Latin & reggaeton": [-5, -140, 5],
-  "Reggae & dancehall": [-50, -60, 0],
-  "J-pop": [0, 110, -5],
-  "Indian classical": [185, -65, -10],
-  "Sufi & qawwali": [170, -20, 5],
-  "Film & TV": [115, -135, -5],
 };
 function hash(text: string) {
   let h = 2166136261;
@@ -144,4 +136,12 @@ export function playShade(count: number | undefined, max: number) {
     ? 0.64
     : 0.92 -
         (0.5 * Math.log1p(Math.max(0, count))) / Math.log1p(Math.max(1, max));
+}
+
+// Keep listening emphasis gentle: unknown counts use the base size, while
+// recorded counts vary from 10% smaller to 12% larger on a logarithmic scale.
+export function playSize(count: number | undefined, max: number) {
+  if (count === undefined) return 1;
+  const ratio = Math.log1p(Math.max(0, count)) / Math.log1p(Math.max(1, max));
+  return 0.9 + 0.22 * Math.min(1, ratio);
 }

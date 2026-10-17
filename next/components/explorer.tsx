@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import { Maximize, Minimize, Plus, Minus, LoaderCircle, X } from "lucide-react";
 import { type Collection, genres, recordedPlayCounts } from "../lib/music";
@@ -16,6 +16,12 @@ const Constellation = dynamic(() => import("./constellation"), {
     </div>
   ),
 });
+const compactGenres: Record<string, string> = {
+  "Indie & alternative": "Indie",
+  "R&B & soul": "R&B\nSoul",
+  "Folk & acoustic": "Folk\nAcoustic",
+  "Jazz & classical": "Jazz\nClassical",
+};
 export default function Explorer({
   collection: initial,
 }: {
@@ -61,6 +67,17 @@ export default function Explorer({
     () => recordedPlayCounts(collection, "all"),
     [collection],
   );
+  const selectedSong = graph.nodes.find((node) => node.id === selected);
+  const detailsRef = useRef<HTMLElement>(null);
+  useEffect(() => {
+    if (!selected) return;
+    detailsRef.current?.focus({ preventScroll: true });
+    const escape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setSelected("");
+    };
+    window.addEventListener("keydown", escape);
+    return () => window.removeEventListener("keydown", escape);
+  }, [selected]);
   const effectiveGenre = previewGenre ?? genre;
   const sceneVisible = useMemo(
     () =>
@@ -171,9 +188,7 @@ export default function Explorer({
               <small className="legend-desktop-hint">
                 Hover to preview · click to focus
               </small>
-              <small className="legend-touch-hint">
-                Swipe genres · tap to focus
-              </small>
+              <small className="legend-touch-hint">Tap a genre to focus</small>
             </span>
             <div
               className="legend-items"
@@ -199,6 +214,7 @@ export default function Explorer({
               {availableGenres.map((g) => (
                 <button
                   key={g.name}
+                  aria-label={g.name}
                   aria-pressed={genre === g.name}
                   className={effectiveGenre === g.name ? "active" : ""}
                   onPointerEnter={(e) => {
@@ -216,11 +232,77 @@ export default function Explorer({
                   <i
                     style={{ background: theme === "dark" ? g.color : g.light }}
                   />
-                  {g.name}
+                  <span className="genre-full-label">{g.name}</span>
+                  <span className="genre-compact-label" aria-hidden="true">
+                    {compactGenres[g.name] || g.name}
+                  </span>
                 </button>
               ))}
             </div>
           </nav>
+        )}
+        {selectedSong && (
+          <aside
+            className="song-details"
+            ref={detailsRef}
+            tabIndex={-1}
+            aria-labelledby="song-details-title"
+          >
+            <div className="song-details-heading">
+              <span className="song-details-eyebrow">YOUR COLLECTION</span>
+              <button
+                className="icon-button"
+                aria-label="Close song details"
+                onClick={() => setSelected("")}
+              >
+                <X size={17} />
+              </button>
+            </div>
+            <span
+              className="song-details-genre"
+              style={{
+                color:
+                  theme === "dark"
+                    ? selectedSong.color
+                    : selectedSong.lightColor,
+              }}
+            >
+              {selectedSong.genre}
+            </span>
+            <h2 id="song-details-title">{selectedSong.track.name}</h2>
+            <p className="song-details-artist">{selectedSong.artist.name}</p>
+            <dl>
+              <div>
+                <dt>Album</dt>
+                <dd>{selectedSong.track.album}</dd>
+              </div>
+              {playCounts[selectedSong.id] !== undefined && (
+                <div>
+                  <dt>Plays</dt>
+                  <dd>{playCounts[selectedSong.id].toLocaleString()}</dd>
+                </div>
+              )}
+              {selectedSong.track.duration != null && (
+                <div>
+                  <dt>Length</dt>
+                  <dd>
+                    {Math.floor(selectedSong.track.duration / 60000)}:
+                    {String(
+                      Math.floor(selectedSong.track.duration / 1000) % 60,
+                    ).padStart(2, "0")}
+                  </dd>
+                </div>
+              )}
+            </dl>
+            <a
+              className="song-details-link"
+              href={selectedSong.track.url}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              Open in Spotify <span aria-hidden="true">↗</span>
+            </a>
+          </aside>
         )}
         {notice && (
           <div className="toast" role="status">

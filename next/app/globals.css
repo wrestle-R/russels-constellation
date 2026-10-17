@@ -188,7 +188,8 @@ svg {
 .graph-tooltip {
   position: absolute;
   z-index: 3;
-  pointer-events: none;
+  pointer-events: auto;
+  cursor: pointer;
   background: var(--surface);
   border: 1px solid var(--line);
   padding: 10px 14px;
@@ -337,6 +338,93 @@ svg {
   min-width: 44px;
   min-height: 44px;
 }
+.genre-compact-label {
+  display: none;
+}
+.song-details {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  z-index: 4;
+  width: 290px;
+  max-width: calc(100% - 32px);
+  max-height: calc(100% - 160px);
+  overflow-y: auto;
+  padding: 18px 20px 20px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  box-shadow: var(--shadow);
+  outline: none;
+}
+.song-details-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: -6px -8px 12px 0;
+}
+.song-details-eyebrow {
+  font-size: 9px;
+  letter-spacing: 1.6px;
+  color: var(--muted);
+}
+.song-details-heading .icon-button {
+  width: 36px;
+  height: 36px;
+}
+.song-details-genre {
+  font-size: 10px;
+}
+.song-details h2 {
+  margin: 8px 0 5px;
+  font-size: 23px;
+  line-height: 1.2;
+  font-weight: 600;
+  letter-spacing: -0.6px;
+  overflow-wrap: anywhere;
+}
+.song-details-artist {
+  color: var(--muted);
+  font-size: 12px;
+  margin: 0 0 20px;
+}
+.song-details dl {
+  margin: 0;
+  display: grid;
+  gap: 12px;
+}
+.song-details dl > div {
+  display: grid;
+  grid-template-columns: 55px 1fr;
+  gap: 12px;
+  font-size: 11px;
+}
+.song-details dt {
+  color: var(--muted);
+}
+.song-details dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+.song-details-link {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 11px;
+  padding-top: 16px;
+  margin-top: 18px;
+  border-top: 1px solid var(--line);
+  color: var(--green);
+}
+.song-details-link:hover {
+  text-decoration: underline;
+}
+.song-details-link:focus-visible,
+.graph-tooltip:focus-visible {
+  outline: 2px solid var(--green);
+  outline-offset: 3px;
+}
 @media (max-width: 1200px) {
   .genre-legend {
     flex-direction: column;
@@ -401,24 +489,65 @@ svg {
   .legend-hint small {
     font-size: 9px;
   }
-  .legend-items {
-    width: 100%;
-    flex-wrap: nowrap;
-    justify-content: flex-start;
-    overflow-x: auto;
-    gap: 4px;
-    padding: 2px 6px 4px;
-    overscroll-behavior-x: contain;
-    touch-action: pan-x;
-    scrollbar-width: none;
-    scroll-padding-inline: 6px;
-  }
-  .legend-items::-webkit-scrollbar {
+  .legend-hint {
     display: none;
   }
+  .legend-items {
+    width: 100%;
+    display: grid;
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+    grid-template-rows: repeat(2, 44px);
+    overflow: visible;
+    gap: 2px;
+    padding: 2px 6px 4px;
+    touch-action: manipulation;
+  }
   .legend-items button {
-    flex-shrink: 0;
-    font-size: 11px;
+    min-width: 0;
+    min-height: 44px;
+    padding: 3px 1px;
+    flex-direction: column;
+    justify-content: center;
+    gap: 3px;
+    font-size: clamp(8.5px, 2.45vw, 11px);
+    line-height: 1.1;
+  }
+  .legend-items i {
+    width: 5px;
+    height: 5px;
+  }
+  .genre-full-label {
+    display: none;
+  }
+  .genre-compact-label {
+    display: inline;
+    white-space: pre-line;
+  }
+  .song-details {
+    top: auto;
+    bottom: calc(138px + env(safe-area-inset-bottom));
+    left: max(12px, env(safe-area-inset-left));
+    right: max(12px, env(safe-area-inset-right));
+    width: auto;
+    max-width: none;
+    max-height: min(310px, 45dvh);
+    padding: 12px 16px 16px;
+  }
+  .song-details-heading {
+    margin-bottom: 4px;
+  }
+  .song-details-heading .icon-button {
+    width: 44px;
+    height: 44px;
+  }
+  .song-details h2 {
+    font-size: 20px;
+  }
+  .song-details-artist {
+    margin-bottom: 14px;
+  }
+  .song-details dl {
+    gap: 8px;
   }
 }
 @media (hover: none) {
@@ -577,4 +706,10 @@ svg {
 }
 .theme-transition * {
   transition: none !important;
+}
+
+@media (min-width: 681px) and (pointer: fine) {
+  .universe:has(.song-details) .zoom-controls {
+    right: 322px;
+  }
 }
