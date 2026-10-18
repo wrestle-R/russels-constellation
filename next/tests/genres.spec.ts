@@ -26,7 +26,7 @@ test("specific genre tags replace the geographic catch-all without guessing nati
   expect(family()).toBe("Unclassified");
 });
 
-test("every named genre has a valid overlapping home", () => {
+test("every named genre has finite positions on the constellation", () => {
   const artists = genres
     .filter((g) => g.name !== "Unclassified")
     .map((g, i) => ({

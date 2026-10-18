@@ -128,6 +128,9 @@ test("fullscreen enters/exits, theme persists, and reduced-motion theme switchin
   await expect(page.locator("html")).toHaveAttribute("data-theme", "light");
   await page.reload();
   await expect(page.locator("html")).toHaveAttribute("data-theme", "light");
+  // The saved theme is applied before hydration; wait for keyboard handlers.
+  await expect(page.locator(".scene-loading")).toHaveCount(0);
+  await expect(page.locator("canvas")).toBeVisible();
   await page.keyboard.press("d");
   await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
 });
@@ -278,7 +281,25 @@ test("real touch gestures keep the two-row legend fixed, orbit, pinch, and tap s
     expect(tooltip.y + tooltip.height).toBeLessThanOrEqual(844);
     await expect(page.locator(".graph-tooltip strong")).not.toHaveText("");
     await page.screenshot({ path: "output/mobile-song-tap.png" });
-    await page.touchscreen.tap(10, box.y + 10);
+    // The pinched-in head fills the screen. Zoom back out to expose a real
+    // backdrop; zoom must preserve the open details until that backdrop is tapped.
+    for (let i = 0; i < 4; i++)
+      await page.getByRole("button", { name: "Zoom out", exact: true }).tap();
+    await expect(page.locator(".song-details")).toBeVisible();
+    let dismissed = false;
+    for (const [x, y] of [
+      [10, 10],
+      [box.width - 10, 10],
+      [10, box.height * 0.82],
+      [box.width - 10, box.height * 0.82],
+    ]) {
+      await page.touchscreen.tap(box.x + x, box.y + y);
+      if (!(await page.locator(".song-details").isVisible())) {
+        dismissed = true;
+        break;
+      }
+    }
+    expect(dismissed).toBe(true);
     await expect(page.locator(".graph-tooltip")).toBeHidden();
     await expect(page.getByRole("complementary", { name: /.+/ })).toHaveCount(
       0,

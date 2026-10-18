@@ -122,8 +122,8 @@ export default function Constellation({
         pixelRatio: { value: renderer.getPixelRatio() },
         dark: { value: 1 },
       },
-      vertexShader: `attribute vec3 aColor; attribute float aSize; attribute float aVisible; varying vec3 vColor; varying float vVisible; uniform float pixelRatio; void main(){ vColor=aColor; vVisible=aVisible; vec4 mv=modelViewMatrix*vec4(position,1.0);gl_PointSize=clamp(aSize*560.0/-mv.z,3.0,42.0)*pixelRatio;gl_Position=projectionMatrix*mv;}`,
-      fragmentShader: `varying vec3 vColor; varying float vVisible;uniform float dark; void main(){float d=length(gl_PointCoord-0.5)*2.0;if(d>1.0)discard;float core=1.0-smoothstep(.22,.48,d);float halo=pow(1.0-d,2.0)*.55;float alpha=(core+halo)*vVisible;vec3 color=vColor;gl_FragColor=vec4(color,alpha);}`,
+      vertexShader: `attribute vec3 aColor; attribute float aSize; attribute float aVisible; varying vec3 vColor; varying float vVisible; varying float vFacing; uniform float pixelRatio; void main(){ vColor=aColor; vVisible=aVisible; vec3 outward=normalize(vec3(position.x/76.0,(position.y-16.0)/112.0,position.z/78.0)); vFacing=(.08+.92*smoothstep(-.15,.6,dot(outward,normalize(cameraPosition-position))))*smoothstep(-145.0,-100.0,position.y); vec4 mv=modelViewMatrix*vec4(position,1.0);gl_PointSize=clamp(aSize*560.0/-mv.z,3.0,42.0)*pixelRatio;gl_Position=projectionMatrix*mv;}`,
+      fragmentShader: `varying vec3 vColor; varying float vVisible;varying float vFacing;uniform float dark; void main(){float d=length(gl_PointCoord-0.5)*2.0;if(d>1.0)discard;float core=1.0-smoothstep(.22,.48,d);float halo=pow(1.0-d,2.0)*.55;float alpha=(core+halo)*vVisible*vFacing;vec3 color=vColor;gl_FragColor=vec4(color,alpha);}`,
     });
     const points = new THREE.Points(geometry, material);
     scene.add(points);
@@ -148,11 +148,12 @@ export default function Constellation({
       new THREE.BufferAttribute(linePositions, 3),
     );
     lineGeo.setAttribute("color", new THREE.BufferAttribute(lineColors, 3));
-    const lineMaterial = new THREE.LineBasicMaterial({
-      vertexColors: true,
+    const lineMaterial = new THREE.ShaderMaterial({
+      uniforms: { opacity: { value: 0.1 } },
       transparent: true,
-      opacity: 0.15,
       depthWrite: false,
+      vertexShader: `attribute vec3 color; varying vec3 vColor; varying float vFacing; void main(){vColor=color; vec3 outward=normalize(vec3(position.x/76.0,(position.y-16.0)/112.0,position.z/78.0));vFacing=(.03+.97*smoothstep(-.15,.6,dot(outward,normalize(cameraPosition-position))))*smoothstep(-145.0,-100.0,position.y);gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0);}`,
+      fragmentShader: `uniform float opacity; varying vec3 vColor; varying float vFacing; void main(){gl_FragColor=vec4(vColor,opacity*vFacing);}`,
     });
     const lines = new THREE.LineSegments(lineGeo, lineMaterial);
     scene.add(lines);
@@ -281,7 +282,7 @@ export default function Constellation({
       lineGeo.setDrawRange(0, drawnEdges * 2);
       lineGeo.attributes.position.needsUpdate = true;
       lineGeo.attributes.color.needsUpdate = true;
-      lineMaterial.opacity = p.theme === "dark" ? 0.18 : 0.19;
+      lineMaterial.uniforms.opacity.value = p.theme === "dark" ? 0.12 : 0.14;
       ring.visible = selectedIndex >= 0 && p.visible.has(p.selected);
       if (selectedIndex >= 0) {
         const n = data.nodes[selectedIndex];
@@ -304,21 +305,22 @@ export default function Constellation({
       const size = box.isEmpty()
         ? new THREE.Vector3(300, 250, 0)
         : box.getSize(new THREE.Vector3());
+      const single = data.nodes.length < 2;
       const fitDistance =
-        (Math.max(size.y / 2, size.x / 2 / camera.aspect) /
-          Math.tan(THREE.MathUtils.degToRad(24))) *
-          1.18 +
-        60;
+        Math.max(size.y / (2 * 0.76), size.x / (2 * camera.aspect * 0.86)) /
+          Math.tan(THREE.MathUtils.degToRad(24)) +
+        size.z * 0.35;
       const distance = THREE.MathUtils.clamp(
-        fitDistance * (camera.aspect < 1 ? 0.66 : 0.82),
+        fitDistance,
         controls.minDistance,
         controls.maxDistance,
       );
       controls.target.copy(center);
-      camera.up.set(0.12, 1, 0);
+      if (!single) controls.target.y -= 12;
+      camera.up.set(0, 1, 0);
       const direction =
         mode === "3D"
-          ? new THREE.Vector3(0.32, 0.72, 1).normalize()
+          ? new THREE.Vector3(0.15, 0.075, 1).normalize()
           : new THREE.Vector3(0, 0, 1);
       camera.position.copy(center).addScaledVector(direction, distance);
       controls.update();
@@ -369,6 +371,15 @@ export default function Constellation({
       // Pick in screen pixels so touch targets stay usable at every zoom level.
       data.nodes.forEach((node, i) => {
         if (!props.current.visible.has(node.id)) return;
+        // Favor the side facing the viewer, so a tap selects the visible head
+        // surface instead of a faint star on the opposite side of the volume.
+        if (data.nodes.length > 2) {
+          const facing =
+            (node.x / 76) * (camera.position.x - node.x) +
+            ((node.y - 16) / 112) * (camera.position.y - node.y) +
+            (node.z / 78) * (camera.position.z - node.z);
+          if (facing < 0) return;
+        }
         projected
           .set(node.x, node.y, mode === "3D" ? node.z : 0)
           .project(camera);
