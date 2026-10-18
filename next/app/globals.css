@@ -659,12 +659,53 @@ svg {
   z-index: -1;
   transform: rotate(-8deg);
 }
-.brand-face {
+.brand-disc {
   position: absolute;
-  inset: 1px;
-  width: 31px;
-  height: 31px;
-  color: var(--green);
+  width: 23px;
+  height: 23px;
+  left: 5px;
+  top: 5px;
+  border-radius: 50%;
+  border: 2px solid var(--green);
+  box-shadow: inset 0 0 0 3px color-mix(in srgb, var(--green), transparent 84%);
+  opacity: 0.8;
+}
+.brand-disc:after {
+  content: "";
+  position: absolute;
+  width: 4px;
+  height: 4px;
+  background: var(--green);
+  border-radius: 50%;
+  top: 8px;
+  left: 8px;
+}
+.brand-bars {
+  position: absolute;
+  display: flex;
+  align-items: flex-end;
+  gap: 2px;
+  right: 3px;
+  bottom: 4px;
+  padding: 3px;
+  background: var(--surface);
+  border-radius: 4px;
+  box-shadow: 0 0 5px color-mix(in srgb, var(--green), transparent 70%);
+}
+.brand-bars i {
+  width: 2px;
+  height: 5px;
+  background: var(--green);
+  border-radius: 2px;
+}
+.brand-bars i:nth-child(2) {
+  height: 10px;
+}
+.brand-bars i:nth-child(3) {
+  height: 7px;
+}
+.brand-bars i:nth-child(4) {
+  height: 12px;
 }
 
 .theme-transition::view-transition-old(root),

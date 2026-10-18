@@ -101,25 +101,13 @@ export default function Explorer({ initial }: { initial: CollectionView }) {
       <header className="topbar">
         <a className="brand" href="/" aria-label="Russel’s constellation home">
           <span className="brand-mark" aria-hidden="true">
-            <svg
-              className="brand-face"
-              viewBox="0 0 32 32"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="1.5"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            >
-              <path d="M6 12C4 8 8 6 10 7C10 3 15 3 17 6C20 2 25 5 25 8C29 7 29 11 26 13" />
-              <path d="M6 20 9 25 16 28 23 25 26 20" opacity=".65" />
-              <path d="M5 14H14L13 19H8L5 16ZM18 14H27V16L24 19H19ZM14 15H18" />
-              <g fill="currentColor" stroke="none">
-                <circle cx="6" cy="12" r="1.2" />
-                <circle cx="17" cy="6" r="1.2" />
-                <circle cx="26" cy="20" r="1.2" />
-                <circle cx="16" cy="28" r="1.2" />
-              </g>
-            </svg>
+            <span className="brand-disc" />
+            <span className="brand-bars">
+              <i />
+              <i />
+              <i />
+              <i />
+            </span>
           </span>
           <span>
             Russel’s<span className="brand-subtitle">constellation</span>
