@@ -8,9 +8,15 @@
   <rect width="64" height="64" rx="15" fill="#0d1712"/>
   <rect x="9" y="8" width="42" height="43" rx="11" transform="rotate(-8 30 30)" fill="#143626" stroke="#42835d" stroke-width="2"/>
   <rect x="14" y="14" width="43" height="43" rx="11" fill="url(#glass)" stroke="#72db99" stroke-width="2"/>
-  <circle cx="34" cy="33" r="14" fill="#12291e" stroke="#8aefac" stroke-width="3"/>
-  <circle cx="34" cy="33" r="9" fill="none" stroke="#397b53" stroke-width="2"/>
-  <circle cx="34" cy="33" r="3" fill="#8aefac"/>
-  <rect x="35" y="36" width="23" height="20" rx="5" fill="#10241a"/>
-  <path d="M40 50v-4m5 4V41m5 9v-6m5 6V39" fill="none" stroke="#8aefac" stroke-width="3" stroke-linecap="round"/>
+  <g transform="translate(18 17) scale(1.1)" fill="none" stroke="#8aefac" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M6 12C4 8 8 6 10 7C10 3 15 3 17 6C20 2 25 5 25 8C29 7 29 11 26 13"/>
+    <path d="M6 20 9 25 16 28 23 25 26 20" opacity=".65"/>
+    <path d="M5 14H14L13 19H8L5 16ZM18 14H27V16L24 19H19ZM14 15H18"/>
+    <g fill="#8aefac" stroke="none">
+      <circle cx="6" cy="12" r="1.2"/>
+      <circle cx="17" cy="6" r="1.2"/>
+      <circle cx="26" cy="20" r="1.2"/>
+      <circle cx="16" cy="28" r="1.2"/>
+    </g>
+  </g>
 </svg>
