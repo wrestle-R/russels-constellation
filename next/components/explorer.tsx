@@ -1,41 +1,23 @@
 "use client";
 import { useEffect, useMemo, useRef, useState } from "react";
-import dynamic from "next/dynamic";
-import { Maximize, Minimize, Plus, Minus, LoaderCircle, X } from "lucide-react";
-import {
-  type Collection,
-  genres,
-  recordedPlayCounts,
-  displayPlayCounts,
-} from "../lib/music";
+import { Maximize, Minimize, Plus, Minus, X } from "lucide-react";
+import { genres, recordedPlayCounts, displayPlayCounts } from "../lib/music";
 import { buildConstellation } from "../lib/constellation";
 import { applyCollectionPreferences } from "../lib/collection-exclusions";
 import { ThemeToggle, useTheme } from "./theme";
-import type { SceneCommand } from "./constellation";
+import Constellation, { type SceneCommand } from "./constellation";
+import { expandCollection, type CollectionView } from "../lib/collection-view";
+import SceneLoading from "./scene-loading";
 import AlbumArtwork from "./album-artwork";
-const Constellation = dynamic(() => import("./constellation"), {
-  ssr: false,
-  loading: () => (
-    <div className="scene-loading">
-      <LoaderCircle size={22} />
-      <span>Opening your constellation…</span>
-    </div>
-  ),
-});
 const compactGenres: Record<string, string> = {
   "Indie & alternative": "Indie",
   "R&B & soul": "R&B\nSoul",
   "Folk & acoustic": "Folk\nAcoustic",
   "Jazz & classical": "Jazz\nClassical",
 };
-export default function Explorer({
-  collection: initial,
-}: {
-  collection: Collection;
-}) {
-  const [collection, setCollection] = useState(() =>
-    applyCollectionPreferences(initial),
-  );
+export default function Explorer({ initial }: { initial: CollectionView }) {
+  const [collection, setCollection] = useState(() => expandCollection(initial));
+  const [sceneReady, setSceneReady] = useState(false);
   const [genre, setGenre] = useState("All genres");
   const [previewGenre, setPreviewGenre] = useState<string | null>(null);
   const [selected, setSelected] = useState("");
@@ -49,7 +31,7 @@ export default function Explorer({
   const { theme } = useTheme();
   useEffect(() => {
     let active = true;
-    import("../lib/history-import")
+    import("../lib/history-storage")
       .then((m) => m.loadImport())
       .then((data) => {
         if (active && data) setCollection(applyCollectionPreferences(data));
@@ -156,7 +138,9 @@ export default function Explorer({
         data-genre={effectiveGenre}
         data-visible-songs={sceneVisible.length}
       >
+        {!sceneReady && <SceneLoading />}
         <Constellation
+          onReady={setSceneReady}
           data={graph}
           selected={selected}
           visible={sceneVisible}

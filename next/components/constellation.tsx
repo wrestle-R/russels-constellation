@@ -5,6 +5,7 @@ import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 import { playShade, playSize, type MapData } from "../lib/constellation";
 export type SceneCommand = { type: "reset" | "in" | "out"; nonce: number };
 type Props = {
+  onReady: (ready: boolean) => void;
   data: MapData;
   selected: string;
   visible: string[];
@@ -23,6 +24,7 @@ type Engine = {
   dismiss: () => void;
 };
 export default function Constellation({
+  onReady,
   data,
   selected,
   visible,
@@ -61,6 +63,7 @@ export default function Constellation({
   useEffect(() => {
     const el = host.current;
     if (!el) return;
+    onReady(false);
     let renderer: THREE.WebGLRenderer;
     try {
       renderer = new THREE.WebGLRenderer({
@@ -70,6 +73,7 @@ export default function Constellation({
       });
     } catch {
       setFailed(true);
+      onReady(true);
       return;
     }
     renderer.setPixelRatio(
@@ -335,6 +339,8 @@ export default function Constellation({
     observer.observe(el);
     resize();
     reset();
+    // Let the first painted frame replace the lightweight loading constellation.
+    const readyFrame = requestAnimationFrame(() => onReady(true));
     engine.current = {
       camera,
       controls,
@@ -545,6 +551,7 @@ export default function Constellation({
     renderer.domElement.addEventListener("webglcontextlost", contextLost);
     return () => {
       cancelAnimationFrame(frame);
+      cancelAnimationFrame(readyFrame);
       observer.disconnect();
       document.removeEventListener("visibilitychange", visibilityChange);
       controls.dispose();
@@ -559,7 +566,7 @@ export default function Constellation({
       tooltip.remove();
       engine.current = null;
     };
-  }, [data, mode]);
+  }, [data, mode, onReady]);
   useEffect(() => {
     if (command.type === "reset") engine.current?.reset();
     else zoom(command.type === "in" ? 0.8 : 1.25);

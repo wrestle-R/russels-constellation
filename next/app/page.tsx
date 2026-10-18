@@ -3,8 +3,10 @@ import path from "node:path";
 import Explorer from "../components/explorer";
 import { applyCollectionPreferences } from "../lib/collection-exclusions";
 import { type Collection } from "../lib/music";
+import { collectionView } from "../lib/collection-view";
 import showcase from "../lib/showcase-data.json";
-export const dynamic = "force-dynamic";
+// Snapshots change only on a deliberate rebuild; serve the page from the CDN.
+export const dynamic = "force-static";
 export default async function Page() {
   let collection = showcase as Collection;
   try {
@@ -17,5 +19,9 @@ export default async function Page() {
     if (data.version === 2 && data.artists?.length)
       collection = data as Collection;
   } catch {}
-  return <Explorer collection={applyCollectionPreferences(collection)} />;
+  return (
+    <Explorer
+      initial={collectionView(applyCollectionPreferences(collection))}
+    />
+  );
 }
