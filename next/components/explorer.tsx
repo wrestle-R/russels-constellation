@@ -8,6 +8,8 @@ import { ThemeToggle, useTheme } from "./theme";
 import Constellation, { type SceneCommand } from "./constellation";
 import { expandCollection, type CollectionView } from "../lib/collection-view";
 import SceneLoading from "./scene-loading";
+import Link from "next/link";
+import Portrait2D from "./portrait-2d";
 import AlbumArtwork from "./album-artwork";
 const compactGenres: Record<string, string> = {
   "Indie & alternative": "Indie",
@@ -15,9 +17,18 @@ const compactGenres: Record<string, string> = {
   "Folk & acoustic": "Folk\nAcoustic",
   "Jazz & classical": "Jazz\nClassical",
 };
-export default function Explorer({ initial }: { initial: CollectionView }) {
+export default function Explorer({
+  initial,
+  portraitAvailable = false,
+  portrait2D = false,
+}: {
+  initial: CollectionView;
+  portraitAvailable?: boolean;
+  portrait2D?: boolean;
+}) {
   const [collection, setCollection] = useState(() => expandCollection(initial));
   const [sceneReady, setSceneReady] = useState(false);
+
   const [genre, setGenre] = useState("All genres");
   const [previewGenre, setPreviewGenre] = useState<string | null>(null);
   const [selected, setSelected] = useState("");
@@ -47,14 +58,16 @@ export default function Explorer({ initial }: { initial: CollectionView }) {
     document.addEventListener("fullscreenchange", update);
     return () => document.removeEventListener("fullscreenchange", update);
   }, []);
-  const graph = useMemo(
+  const originalGraph = useMemo(
     () => buildConstellation(collection.artists, collection.tracks),
     [collection],
   );
-  const playCounts = useMemo(
-    () => displayPlayCounts(recordedPlayCounts(collection, "all")),
+  const rawCounts = useMemo(
+    () => recordedPlayCounts(collection, "all"),
     [collection],
   );
+  const graph = originalGraph;
+  const playCounts = useMemo(() => displayPlayCounts(rawCounts), [rawCounts]);
   const selectedSong = graph.nodes.find((node) => node.id === selected);
   const detailsRef = useRef<HTMLElement>(null);
   useEffect(() => {
@@ -110,10 +123,26 @@ export default function Explorer({ initial }: { initial: CollectionView }) {
             </span>
           </span>
           <span>
-            Russel’s<span className="brand-subtitle">constellation</span>
+            Russel’s
+            <span className="brand-subtitle">
+              {portrait2D ? "constellation · 2D" : "constellation"}
+            </span>
           </span>
         </a>
         <div className="topbar-actions">
+          {(portraitAvailable || portrait2D) && (
+            <Link
+              className="portrait-toggle"
+              href={portrait2D ? "/" : "/2D"}
+              title={
+                portrait2D
+                  ? "Return to the 3D constellation"
+                  : "Open the 2D particle portrait"
+              }
+            >
+              {portrait2D ? "3D" : "2D"}
+            </Link>
+          )}
           <button
             className="icon-button fullscreen-toggle"
             aria-label={fullscreen ? "Exit fullscreen" : "Enter fullscreen"}
@@ -133,24 +162,44 @@ export default function Explorer({ initial }: { initial: CollectionView }) {
       </header>
       <main
         className="universe"
-        aria-label="Music constellation"
+        aria-label={portrait2D ? "2D particle portrait" : "Music constellation"}
+        data-view={portrait2D ? "2D" : "constellation"}
         data-period="all"
         data-genre={effectiveGenre}
-        data-visible-songs={sceneVisible.length}
+        data-visible-songs={
+          new Set(
+            graph.nodes
+              .filter(
+                (n) =>
+                  effectiveGenre === "All genres" || n.genre === effectiveGenre,
+              )
+              .map((n) => n.track.id),
+          ).size
+        }
+        data-visible-dots={sceneVisible.length}
       >
         {!sceneReady && <SceneLoading />}
-        <Constellation
-          onReady={setSceneReady}
-          data={graph}
-          selected={selected}
-          visible={sceneVisible}
-          theme={theme}
-          mode="3D"
-          rotating={false}
-          command={command}
-          playCounts={playCounts}
-          onSelect={setSelected}
-        />
+        {portrait2D ? (
+          <Portrait2D
+            genre={effectiveGenre}
+            theme={theme}
+            command={command}
+            onReady={setSceneReady}
+          />
+        ) : (
+          <Constellation
+            onReady={setSceneReady}
+            data={graph}
+            selected={selected}
+            visible={sceneVisible}
+            theme={theme}
+            mode="3D"
+            rotating={false}
+            command={command}
+            playCounts={playCounts}
+            onSelect={setSelected}
+          />
+        )}
         <div
           className="zoom-controls"
           role="group"
@@ -176,7 +225,9 @@ export default function Explorer({ initial }: { initial: CollectionView }) {
             <span className="legend-hint">
               GENRES{" "}
               <small className="legend-desktop-hint">
-                Hover to preview · click to focus
+                {portrait2D
+                  ? "Hover to ripple · click to hold"
+                  : "Hover to preview · click to focus"}
               </small>
               <small className="legend-touch-hint">Tap a genre to focus</small>
             </span>
@@ -273,10 +324,10 @@ export default function Explorer({ initial }: { initial: CollectionView }) {
                 <dt>Album</dt>
                 <dd>{selectedSong.track.album}</dd>
               </div>
-              {playCounts[selectedSong.id] !== undefined && (
+              {playCounts[selectedSong.track.id] !== undefined && (
                 <div>
                   <dt>Plays</dt>
-                  <dd>{playCounts[selectedSong.id].toLocaleString()}</dd>
+                  <dd>{playCounts[selectedSong.track.id].toLocaleString()}</dd>
                 </div>
               )}
               {selectedSong.track.duration != null && (

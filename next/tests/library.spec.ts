@@ -128,6 +128,8 @@ test("fullscreen enters/exits, theme persists, and reduced-motion theme switchin
   await expect(page.locator("html")).toHaveAttribute("data-theme", "light");
   await page.reload();
   await expect(page.locator("html")).toHaveAttribute("data-theme", "light");
+  await expect(page.locator(".scene-loading")).toHaveCount(0);
+  await expect(page.locator("canvas")).toBeVisible();
   await page.keyboard.press("d");
   await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
 });
