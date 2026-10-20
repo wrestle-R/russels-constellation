@@ -7,7 +7,8 @@
 <p align="center">My music, mapped in the stars.</p>
 
 <p align="center">
-  <a href="https://russels-constellation.vercel.app/"><strong>Explore the constellation ↗</strong></a>
+  <a href="https://spotify.russel.is-a.dev/"><strong>Explore the constellation ↗</strong></a>
+  · <a href="https://spotify.russeldanielpaul.is-a.dev/">Alternate link</a>
 </p>
 
 ![Russel’s constellation: a field of song stars connected by artist, with overlapping genre colors.](docs/images/constellation.webp)

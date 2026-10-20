@@ -79,7 +79,7 @@ export default function Explorer({
     window.addEventListener("keydown", escape);
     return () => window.removeEventListener("keydown", escape);
   }, [selected]);
-  const effectiveGenre = previewGenre ?? genre;
+  const effectiveGenre = previewGenre ?? (portrait2D ? "All genres" : genre);
   const sceneVisible = useMemo(
     () =>
       graph.nodes
@@ -98,6 +98,33 @@ export default function Explorer({
       ),
     [graph],
   );
+  const genreRow = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!portrait2D || !genreRow.current) return;
+    const row = genreRow.current;
+    let active = true;
+    const fitGenres = () => {
+      if (!active) return;
+      const right =
+        row.getBoundingClientRect().right -
+        parseFloat(getComputedStyle(row).paddingRight || "0");
+      row.querySelectorAll<HTMLButtonElement>("button").forEach((button) => {
+        const fits = button.getBoundingClientRect().right <= right + 0.5;
+        button.style.visibility = fits ? "visible" : "hidden";
+        button.tabIndex = fits ? 0 : -1;
+        button.setAttribute("aria-hidden", String(!fits));
+      });
+      setPreviewGenre(null);
+    };
+    const observer = new ResizeObserver(fitGenres);
+    observer.observe(row);
+    fitGenres();
+    document.fonts.ready.then(fitGenres);
+    return () => {
+      active = false;
+      observer.disconnect();
+    };
+  }, [portrait2D, availableGenres]);
   function act(type: SceneCommand["type"]) {
     setCommand((c) => ({ type, nonce: c.nonce + 1 }));
   }
@@ -226,18 +253,25 @@ export default function Explorer({
               GENRES{" "}
               <small className="legend-desktop-hint">
                 {portrait2D
-                  ? "Hover to ripple · click to hold"
+                  ? "Hover to preview"
                   : "Hover to preview · click to focus"}
               </small>
-              <small className="legend-touch-hint">Tap a genre to focus</small>
+              <small className="legend-touch-hint">
+                {portrait2D
+                  ? "Hold a genre to preview"
+                  : "Tap a genre to focus"}
+              </small>
             </span>
             <div
               className="legend-items"
-              onTouchStart={() => setPreviewGenre(null)}
+              ref={genreRow}
+              onTouchStart={
+                portrait2D ? undefined : () => setPreviewGenre(null)
+              }
             >
               <button
                 className={effectiveGenre === "All genres" ? "active" : ""}
-                aria-pressed={genre === "All genres"}
+                aria-pressed={portrait2D ? undefined : genre === "All genres"}
                 onClick={() => {
                   setGenre("All genres");
                   setPreviewGenre(null);
@@ -256,7 +290,7 @@ export default function Explorer({
                 <button
                   key={g.name}
                   aria-label={g.name}
-                  aria-pressed={genre === g.name}
+                  aria-pressed={portrait2D ? undefined : genre === g.name}
                   className={effectiveGenre === g.name ? "active" : ""}
                   onPointerEnter={(e) => {
                     if (e.pointerType === "mouse") setPreviewGenre(g.name);
@@ -264,7 +298,21 @@ export default function Explorer({
                   onPointerLeave={() => setPreviewGenre(null)}
                   onFocus={() => setPreviewGenre(g.name)}
                   onBlur={() => setPreviewGenre(null)}
+                  onPointerDown={(e) => {
+                    if (portrait2D) {
+                      e.preventDefault();
+                      setPreviewGenre(g.name);
+                    }
+                  }}
+                  onPointerUp={(e) => {
+                    if (portrait2D && e.pointerType !== "mouse")
+                      setPreviewGenre(null);
+                  }}
+                  onPointerCancel={() => {
+                    if (portrait2D) setPreviewGenre(null);
+                  }}
                   onClick={() => {
+                    if (portrait2D) return;
                     setGenre(g.name);
                     setPreviewGenre(null);
                     setSelected("");
