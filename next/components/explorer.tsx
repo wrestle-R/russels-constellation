@@ -4,7 +4,7 @@ import { Maximize, Minimize, Plus, Minus, X } from "lucide-react";
 import { genres, recordedPlayCounts, displayPlayCounts } from "../lib/music";
 import { buildConstellation } from "../lib/constellation";
 import { applyCollectionPreferences } from "../lib/collection-exclusions";
-import { ThemeToggle, useTheme } from "./theme";
+import { useTheme } from "./theme";
 import Constellation, { type SceneCommand } from "./constellation";
 import { expandCollection, type CollectionView } from "../lib/collection-view";
 import SceneLoading from "./scene-loading";
@@ -184,7 +184,6 @@ export default function Explorer({
           >
             {fullscreen ? <Minimize size={18} /> : <Maximize size={18} />}
           </button>
-          <ThemeToggle />
         </div>
       </header>
       <main
@@ -209,6 +208,9 @@ export default function Explorer({
         {portrait2D ? (
           <Portrait2D
             genre={effectiveGenre}
+            songs={graph.nodes}
+            playCounts={playCounts}
+            onSelect={setSelected}
             theme={theme}
             command={command}
             onReady={setSceneReady}

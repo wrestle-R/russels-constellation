@@ -45,13 +45,13 @@ async function swipe(
   });
 }
 
-test("desktop keeps only name, fullscreen, theme and zoom, with all-time genre previews", async ({
+test("desktop keeps only name, fullscreen and zoom, with all-time genre previews", async ({
   page,
 }) => {
   const errors: string[] = [];
   page.on("pageerror", (error) => errors.push(error.message));
   await ready(page);
-  await expect(page.locator("header button")).toHaveCount(2);
+  await expect(page.locator("header button")).toHaveCount(1);
   await expect(
     page.locator("input, select, details, dialog, .period-control"),
   ).toHaveCount(0);
@@ -104,10 +104,15 @@ test("desktop keeps only name, fullscreen, theme and zoom, with all-time genre p
   expect(errors).toEqual([]);
 });
 
-test("fullscreen enters/exits, theme persists, and reduced-motion theme switching works", async ({
+test("fullscreen works and dark mode ignores stored and system light preferences", async ({
   page,
 }) => {
+  await page.emulateMedia({ colorScheme: "light" });
+  await page.addInitScript(() =>
+    localStorage.setItem("play-it-back-theme", "light"),
+  );
   await ready(page);
+  await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
   await page
     .getByRole("button", { name: "Enter fullscreen", exact: true })
     .click();
@@ -124,10 +129,10 @@ test("fullscreen enters/exits, theme persists, and reduced-motion theme switchin
     page.getByRole("button", { name: "Enter fullscreen", exact: true }),
   ).toBeVisible();
   await page.emulateMedia({ reducedMotion: "reduce" });
-  await page.getByRole("button", { name: "Switch to light mode" }).click();
-  await expect(page.locator("html")).toHaveAttribute("data-theme", "light");
+  await expect(page.locator(".theme-toggle")).toHaveCount(0);
+  await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
   await page.reload();
-  await expect(page.locator("html")).toHaveAttribute("data-theme", "light");
+  await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
   await expect(page.locator(".scene-loading")).toHaveCount(0);
   await expect(page.locator("canvas")).toBeVisible();
   await page.keyboard.press("d");
@@ -189,11 +194,7 @@ for (const size of [
           "0",
         );
       }
-      await page.getByRole("button", { name: "Switch to light mode" }).tap();
-      await expect(page.locator("html")).toHaveAttribute("data-theme", "light");
-      if (size.width === 390)
-        await page.screenshot({ path: "output/mobile-light.png" });
-      await page.getByRole("button", { name: "Switch to dark mode" }).tap();
+      await expect(page.locator(".theme-toggle")).toHaveCount(0);
       await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
       await noOverflow(page);
       await page.screenshot({ path: `output/mobile-${size.width}.png` });
