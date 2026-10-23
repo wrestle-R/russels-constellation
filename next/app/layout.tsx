@@ -1,3 +1,4 @@
+import Script from "next/script";
 import type { Metadata, Viewport } from "next";
 import { ThemeProvider } from "../components/theme";
 import "./globals.css";
@@ -16,6 +17,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
     <html lang="en" data-theme="dark" suppressHydrationWarning>
       <body>
         <ThemeProvider>{children}</ThemeProvider>
+        <Script src="https://admin-rdp.vercel.app/tracker.js" strategy="afterInteractive" />
       </body>
     </html>
   );
