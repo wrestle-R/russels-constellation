@@ -36,7 +36,11 @@ export function createPortraitHover(aspect: number) {
   return {
     texture,
     clear,
-    leave() { previous = undefined; speed = 0; inside = false; },
+    leave() {
+      previous = undefined;
+      speed = 0;
+      inside = false;
+    },
     move(x: number, y: number, now: number) {
       // Input uses the same head-local coordinates as song picking and zoom.
       x = (x / aspect + 0.5) * 1230;

@@ -1,6 +1,8 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
 import * as THREE from "three";
+import { createPortraitHover } from "../lib/portrait-hover";
+import { stepHeadphones } from "../lib/portrait-motion";
 import {
   isGlimpseOfUs,
   isRomanticPortraitSong,
@@ -75,6 +77,10 @@ export default function Portrait2D({
     let renderer: THREE.WebGLRenderer | undefined;
     let geometry: THREE.BufferGeometry | undefined;
     let material: THREE.ShaderMaterial | undefined;
+    let hoverBrush: ReturnType<typeof createPortraitHover> | undefined;
+    let maskTexture: THREE.Texture | undefined;
+    let maskGeometry: THREE.PlaneGeometry | undefined;
+    let maskMaterial: THREE.ShaderMaterial | undefined;
     let tongueGeometry: THREE.BufferGeometry | undefined;
     let tongueMaterial: THREE.ShaderMaterial | undefined;
     let headsetGeometry: THREE.BufferGeometry | undefined;
@@ -138,6 +144,19 @@ export default function Portrait2D({
         headphoneMask[i] = expression[8 + i * 9 + 8] > 0 ? 1 : 0;
         gearMask[i] = expression[8 + i * 9 + 8] > 200 ? 1 : 0;
       }
+      hoverBrush = createPortraitHover(source.width / source.height);
+      maskTexture = await new THREE.TextureLoader()
+        .loadAsync("/spider-mask.svg")
+        .catch(() => undefined);
+      if (!alive) {
+        hoverBrush.dispose();
+        maskTexture?.dispose();
+        return;
+      }
+      if (maskTexture) {
+        maskTexture.generateMipmaps = false;
+        maskTexture.minFilter = THREE.LinearFilter;
+      }
       // Every target belongs to an existing portrait particle: no incoming swarm.
       await document.fonts.ready;
       if (!alive) return;
@@ -167,7 +186,7 @@ export default function Portrait2D({
         antialias: false,
         powerPreference: "low-power",
       });
-      renderer.setPixelRatio(Math.min(Math.max(devicePixelRatio, 1.5), 2));
+      renderer.setPixelRatio(Math.min(devicePixelRatio, 1.5));
       renderer.setClearColor(0, 0);
       renderer.domElement.setAttribute(
         "aria-label",
@@ -248,6 +267,8 @@ export default function Portrait2D({
         }
       `;
       const uniforms = {
+        hoverMask: { value: hoverBrush.texture },
+        portraitAspect: { value: source.width / source.height },
         time: { value: 0 },
         amount: { value: 0 },
         accent: { value: new THREE.Color("#67d8bc") },
@@ -277,6 +298,7 @@ export default function Portrait2D({
         uniforms,
         vertexShader: `attribute vec3 aColor, wordPosition; attribute float seed; attribute vec4 tongueColor, bareColor; attribute float headphoneMask, gearMask;
           uniform float time, amount, motion, pointSize, hover, density, tongue, bare, gearLayer;
+          uniform sampler2D hoverMask; uniform float portraitAspect;
           uniform vec2 pointer; uniform vec3 profile, ripple;
           varying vec3 color; varying float glow, keep, opacity;
           ${choreographyShader}
@@ -292,7 +314,7 @@ export default function Portrait2D({
             else{dance=vec2(-p.y,p.x)*sin(length(p.xy)*18.-t*2.)*profile.z;}
             float age=time-ripple.z, distance=length(p.xy-ripple.xy);
             float ring=exp(-pow((distance-age*.32)*22.,2.))*exp(-max(age,0.)*1.8)*step(0.,age);
-            p.xy+=motion*(delta*near*.2*(1.-tongue)+dance*amount+normalize(p.xy-ripple.xy+vec2(.001))*ring*.026);
+            p.xy+=motion*(dance*amount+normalize(p.xy-ripple.xy+vec2(.001))*ring*.026);
             float headset = headphoneMask * bare;
             float revealed=smoothstep(.06,.62,bare);
             // The ear stays anchored; the original headset has its own lift layer.
@@ -300,8 +322,8 @@ export default function Portrait2D({
               float lift=bare*bare*(3.-2.*bare);
               float turn=-.035*sin(bare*3.14159)*motion;
               p.xy=mat2(cos(turn),-sin(turn),sin(turn),cos(turn))*p.xy;
-              p.x*=1.+lift*.035*motion;
-              p.y+=lift*.045*motion;
+              p.x*=1.+lift*.025*motion;
+              p.y+=lift*.028*motion;
             }
             float pink = step(tongueColor.g*.96,tongueColor.b)*step(tongueColor.g*1.12,tongueColor.r)*step(.3,tongueColor.a)*step(.207,-position.y)*step(-position.y,.29)*step(seed,.85);
             float opening = exp(-pow(position.x/.075,2.)-pow((position.y+.216)/.005,2.));
@@ -328,6 +350,7 @@ export default function Portrait2D({
             glow+=energy*.6;
             opacity*=mix(1.,.82,energy);
 
+            if(gearLayer<.5) opacity*=1.-texture2D(hoverMask,vec2(position.x/portraitAspect+.5,position.y+.5)).a;
             gl_Position=projectionMatrix*modelViewMatrix*vec4(p,1.);
             gl_PointSize=mix(pointSize*(.85+seed*.25+near*.12),wordPointSize*(1.+energy*1.5+satellite*arrival*.3),max(arrival,energy)) *keep;
           }`,
@@ -340,6 +363,24 @@ export default function Portrait2D({
       });
       const points = new THREE.Points(geometry, material);
       scene.add(points);
+      let maskPlane: THREE.Mesh | undefined;
+      if (maskTexture) {
+        maskGeometry = new THREE.PlaneGeometry(source.width / source.height, 1);
+        maskMaterial = new THREE.ShaderMaterial({
+          uniforms: {
+            art: { value: maskTexture },
+            brush: { value: hoverBrush.texture },
+          },
+          transparent: true,
+          depthTest: false,
+          depthWrite: false,
+          vertexShader: `varying vec2 maskUV; void main(){maskUV=uv;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.);}`,
+          fragmentShader: `uniform sampler2D art,brush;varying vec2 maskUV;void main(){vec4 color=texture2D(art,maskUV);color.a*=texture2D(brush,maskUV).a;if(color.a<.001)discard;gl_FragColor=color;}`,
+        });
+        maskPlane = new THREE.Mesh(maskGeometry, maskMaterial);
+        maskPlane.renderOrder = 0.5;
+        scene.add(maskPlane);
+      }
       headsetGeometry = new THREE.BufferGeometry();
       for (const [name, attribute] of Object.entries(geometry.attributes))
         headsetGeometry.setAttribute(name, attribute);
@@ -665,22 +706,49 @@ export default function Portrait2D({
       let hovering = false;
       const move = (event: PointerEvent) => {
         if (tooltip!.contains(event.target as Node)) return;
-        if ((event.target as HTMLElement).closest("button")) {
+        const target = event.target as HTMLElement;
+        if (target.closest(".portrait-left-ear,.portrait-right-ear")) {
+          hoverBrush!.clear();
           hovering = false;
           clearSong();
           return;
         }
-        lastPointerType = event.pointerType;
-        hovering = true;
         const box = container.getBoundingClientRect();
         pointerTarget.set(
           (event.clientX - box.left - width / 2) / (fit * zoom),
           (height / 2 - (event.clientY - box.top) - points.position.y) /
             (fit * zoom),
         );
+        if (event.pointerType === "mouse") {
+          if (
+            Math.abs(pointerTarget.x) < 0.35 &&
+            pointerTarget.y > -0.46 &&
+            pointerTarget.y < 0.5
+          ) {
+            container.dataset.revealRadius = hoverBrush!
+              .move(pointerTarget.x, pointerTarget.y, performance.now())
+              .toFixed(1);
+          } else hoverBrush!.leave();
+        }
+        if (target.closest("button")) {
+          hovering = false;
+          clearSong();
+          return;
+        }
+        lastPointerType = event.pointerType;
+        hovering = true;
         if (event.pointerType === "mouse") showSong(event);
       };
+      const pauseMaskForGear = (event: Event) => {
+        if (
+          (event.target as HTMLElement).closest(
+            ".portrait-left-ear,.portrait-right-ear",
+          )
+        )
+          hoverBrush!.clear();
+      };
       const tap = (event: PointerEvent) => {
+        pauseMaskForGear(event);
         if ((event.target as HTMLElement).closest("button,input,label")) {
           if (!tooltip!.contains(event.target as Node)) clearSong();
           return;
@@ -695,6 +763,7 @@ export default function Portrait2D({
         );
       };
       const leave = () => {
+        hoverBrush!.leave();
         hovering = false;
         if (lastPointerType !== "touch") clearSong();
       };
@@ -714,12 +783,16 @@ export default function Portrait2D({
         );
       };
       renderer.domElement.addEventListener("click", chooseSong);
+      container.addEventListener("pointerover", pauseMaskForGear);
+      container.addEventListener("focusin", pauseMaskForGear);
       container.addEventListener("pointerdown", tap);
       container.addEventListener("pointermove", move);
       container.addEventListener("pointerleave", leave);
       container.addEventListener("wheel", wheel, { passive: false });
       removeEvents = () => {
         renderer!.domElement.removeEventListener("click", chooseSong);
+        container.removeEventListener("pointerover", pauseMaskForGear);
+        container.removeEventListener("focusin", pauseMaskForGear);
         container.removeEventListener("pointerdown", tap);
         container.removeEventListener("pointermove", move);
         container.removeEventListener("pointerleave", leave);
@@ -754,6 +827,10 @@ export default function Portrait2D({
         zoom +=
           (targetZoom - zoom) * (reduced.matches ? 1 : 1 - Math.exp(-dt * 12));
         points.scale.setScalar(fit * zoom);
+        if (maskPlane) {
+          maskPlane.scale.copy(points.scale);
+          maskPlane.position.copy(points.position);
+        }
         tonguePoints.scale.copy(points.scale);
         tonguePoints.position.copy(points.position);
         headsetPoints.scale.copy(points.scale);
@@ -848,11 +925,14 @@ export default function Portrait2D({
             bareVelocity = 0;
           } else {
             // Exact critically damped spring: smooth reversal, no overshoot or long tail.
-            const offset = uniforms.bare.value - bareTarget;
-            const decay = Math.exp(-9 * dt);
-            const step = (bareVelocity + 9 * offset) * dt;
-            uniforms.bare.value = bareTarget + (offset + step) * decay;
-            bareVelocity = (bareVelocity - 9 * step) * decay;
+            const gearStep = stepHeadphones(
+              uniforms.bare.value,
+              bareVelocity,
+              bareTarget,
+              dt,
+            );
+            uniforms.bare.value = gearStep.position;
+            bareVelocity = gearStep.velocity;
             if (
               Math.abs(uniforms.bare.value - bareTarget) < 0.0001 &&
               Math.abs(bareVelocity) < 0.001
@@ -897,10 +977,19 @@ export default function Portrait2D({
           uniforms.motion.value = reduced.matches ? 0 : 1;
           if (!reduced.matches) uniforms.time.value += dt;
         }
+        const maskActive = hoverBrush!.update(
+          now,
+          reduced.matches,
+          Boolean(maskPlane) && !signatureActive && !tongueActive && !active,
+        );
+        if (maskPlane) maskPlane.visible = maskActive;
+        if (container.dataset.hoverMask !== String(maskActive))
+          container.dataset.hoverMask = String(maskActive);
         uniforms.light.value = 0;
         renderer!.render(scene, camera);
         frame = requestAnimationFrame(render);
       };
+      renderer.compile(scene, camera);
       frame = requestAnimationFrame(render);
       onReady(true);
     }
@@ -917,6 +1006,10 @@ export default function Portrait2D({
       removeEvents();
       geometry?.dispose();
       material?.dispose();
+      hoverBrush?.dispose();
+      maskTexture?.dispose();
+      maskGeometry?.dispose();
+      maskMaterial?.dispose();
       tongueGeometry?.dispose();
       tongueMaterial?.dispose();
       tooltip?.remove();
