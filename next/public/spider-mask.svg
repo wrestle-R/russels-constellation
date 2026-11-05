@@ -1,0 +1,60 @@
+<svg xmlns="http://www.w3.org/2000/svg" x="0" y="0" width="1230" height="1278" viewBox="0 0 600 680" preserveAspectRatio="xMidYMid meet" aria-hidden="true">
+<defs>
+<path id="head" d="M300 33 C193 33 117 110 118 237 C119 349 151 445 204 515 C233 554 266 580 300 583 C334 580 367 554 396 515 C449 445 481 349 482 237 C483 110 407 33 300 33Z"/>
+<clipPath id="head-clip"><use href="#head"/></clipPath>
+<radialGradient id="red" cx="35%" cy="25%" r="80%"><stop stop-color="#c92d3d"/><stop offset=".38" stop-color="#9c1c2b"/><stop offset=".72" stop-color="#651020"/><stop offset="1" stop-color="#300c18"/></radialGradient>
+<linearGradient id="edge" x1="0" y1="0" x2="1" y2="0"><stop stop-color="#2d0610"/><stop offset=".16" stop-color="#f74b5440"/><stop offset=".48" stop-color="#dd293500"/><stop offset=".8" stop-color="#40071670"/><stop offset="1" stop-color="#080a15"/></linearGradient>
+<radialGradient id="forehead" cx="38%" cy="24%" r="53%"><stop stop-color="#ff9b821c"/><stop offset=".6" stop-color="#ff5a4d0c"/><stop offset="1" stop-color="#ff584700"/></radialGradient>
+<radialGradient id="chin" cx="47%" cy="10%" r="85%"><stop stop-color="#ed293500"/><stop offset=".8" stop-color="#30031077"/><stop offset="1" stop-color="#09050d99"/></radialGradient>
+<linearGradient id="lens" x1=".2" y1="0" x2=".8" y2="1"><stop stop-color="#fff"/><stop offset=".52" stop-color="#eaf0ee"/><stop offset="1" stop-color="#8eabb6"/></linearGradient>
+<linearGradient id="eye-frame" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#252a33"/><stop offset=".45" stop-color="#070b13"/><stop offset="1" stop-color="#1d111a"/></linearGradient>
+<pattern id="weave" width="3" height="3" patternUnits="userSpaceOnUse"><path d="M0 1.5h3M1.5 0v3" stroke="#090209" stroke-width=".35" opacity=".24"/><circle cx="1.5" cy="1.5" r=".4" fill="#ffaea1" opacity=".15"/></pattern>
+<pattern id="lens-mesh" width="2.5" height="2.5" patternUnits="userSpaceOnUse"><circle cx="1" cy="1" r=".3" fill="#526573" opacity=".25"/></pattern>
+<filter id="web-shadow" x="-10%" y="-10%" width="120%" height="120%"><feDropShadow dx=".4" dy="1.1" stdDeviation=".55" flood-color="#1e0308" flood-opacity=".8"/></filter>
+<filter id="eye-shadow" x="-20%" y="-30%" width="140%" height="160%"><feDropShadow dx="0" dy="3" stdDeviation="3" flood-color="#20000a" flood-opacity=".65"/></filter>
+<g id="web-lines" fill="none" stroke-linecap="round" stroke-linejoin="round">
+<!-- Long meridians curve around the skull instead of meeting in a flat star. -->
+<path d="M300 25 C290 151 293 249 300 329 C303 425 298 532 300 619"/>
+<path d="M226 44 C245 133 255 232 275 291 C281 310 293 324 300 329 C274 401 254 490 247 590"/>
+<path d="M161 95 C197 161 218 227 241 275 C258 305 281 321 300 329 C242 381 207 448 185 515"/>
+<path d="M129 186 C188 213 214 256 241 285 C261 305 283 321 300 329 C221 349 165 385 144 421"/>
+<path d="M128 298 C193 294 255 308 300 329 C211 322 159 322 129 329"/>
+<path d="M374 44 C355 133 345 232 325 291 C319 310 307 324 300 329 C326 401 346 490 353 590"/>
+<path d="M439 95 C403 161 382 227 359 275 C342 305 319 321 300 329 C358 381 393 448 415 515"/>
+<path d="M471 186 C412 213 386 256 359 285 C339 305 317 321 300 329 C379 349 435 385 456 421"/>
+<path d="M472 298 C407 294 345 308 300 329 C389 322 441 322 471 329"/>
+<!-- Curved transverse rings, with small scallops between the meridians. -->
+<path d="M191 67 Q212 96 236 100 Q264 118 296 115 Q332 119 364 100 Q389 94 409 67"/>
+<path d="M148 123 Q180 156 209 158 Q235 180 256 179 Q275 195 295 193 Q324 197 345 179 Q373 180 391 158 Q426 151 452 123"/>
+<path d="M130 191 Q166 217 188 221 Q219 234 234 233 Q260 250 274 251 Q287 264 298 264 Q315 265 326 251 Q348 249 366 233 Q391 235 412 221 Q445 214 470 191"/>
+<path d="M128 269 Q171 287 198 286 Q239 301 263 301 Q286 307 300 329 Q313 308 337 301 Q368 303 402 286 Q437 286 472 269"/>
+<path d="M135 375 Q166 368 195 376 Q220 369 246 365 Q273 369 289 363 Q300 369 311 363 Q334 370 354 365 Q382 369 405 376 Q436 369 465 375"/>
+<path d="M151 438 Q176 427 200 434 Q229 424 250 425 Q277 438 300 433 Q325 439 350 425 Q374 424 400 434 Q428 426 449 438"/>
+<path d="M177 497 Q199 477 220 484 Q239 478 259 484 Q280 498 300 494 Q321 498 341 484 Q363 478 380 484 Q404 480 423 497"/>
+<path d="M212 550 Q233 532 251 541 Q276 552 300 550 Q326 552 349 541 Q367 533 388 550"/>
+<path d="M256 596 Q276 580 300 587 Q324 580 344 596"/>
+</g>
+<path id="left-eye" d="M148 241 C191 266 231 288 276 305 C264 340 241 368 213 373 C176 381 154 345 148 241Z"/>
+</defs><g transform="translate(0 25) rotate(-.8 300 320) translate(300 0) scale(1.04 1) translate(-300 0)">
+<g clip-path="url(#head-clip)">
+<use href="#head" fill="url(#red)"/>
+<path d="M443 120 C417 268 435 381 371 482 Q341 529 300 557 Q382 538 435 437 L487 145Z" fill="#1b061944"/>
+<path d="M153 339 C167 440 215 509 279 546 Q242 496 214 429Z" fill="#32071938"/>
+<path d="M300 284 Q277 378 283 425 Q300 440 317 425 Q323 378 300 284Z" fill="#4a08182b"/>
+<path d="M300 298 Q294 374 298 414" fill="none" stroke="#f65d5220" stroke-width="7"/>
+<use href="#head" fill="url(#edge)"/>
+<use href="#head" fill="url(#forehead)"/>
+<use href="#head" fill="url(#chin)"/>
+<use href="#head" fill="url(#weave)"/>
+<use href="#web-lines" stroke="#ffb7a1" stroke-width="3.1" opacity=".18" transform="translate(-.3 -.7)"/>
+<use href="#web-lines" stroke="#220a14" stroke-width="1.9" filter="url(#web-shadow)"/>
+</g>
+<use href="#head" fill="none" stroke="#e6565328" stroke-width="1.2"/>
+<g filter="url(#eye-shadow)">
+<use href="#left-eye" fill="url(#eye-frame)" stroke="url(#eye-frame)" stroke-width="16" stroke-linejoin="round"/>
+<use href="#left-eye" fill="url(#lens)"/>
+<use href="#left-eye" fill="url(#lens-mesh)"/>
+<g transform="translate(600 0) scale(-1 1)"><use href="#left-eye" fill="url(#eye-frame)" stroke="url(#eye-frame)" stroke-width="16" stroke-linejoin="round"/><use href="#left-eye" fill="url(#lens)"/><use href="#left-eye" fill="url(#lens-mesh)"/></g>
+</g>
+<path d="M161 249 Q222 289 270 308M439 249 Q378 289 330 308" stroke="#9a9ca54a" stroke-width="1" fill="none"/>
+</g></svg>
