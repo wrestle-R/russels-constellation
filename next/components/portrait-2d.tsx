@@ -76,6 +76,8 @@ export default function Portrait2D({
       frame = 0;
     let renderer: THREE.WebGLRenderer | undefined;
     let geometry: THREE.BufferGeometry | undefined;
+    let signatureGeometry: THREE.BufferGeometry | undefined;
+    let signatureHeadsetGeometry: THREE.BufferGeometry | undefined;
     let material: THREE.ShaderMaterial | undefined;
     let hoverBrush: ReturnType<typeof createPortraitHover> | undefined;
     let maskTexture: THREE.Texture | undefined;
@@ -251,6 +253,13 @@ export default function Portrait2D({
           float orbit=hash*6.28318+revealTime*(.8+id*20.);
           vec3 halo=vec3(cos(orbit)*.49,sin(orbit)*.18,sin(orbit)*.06)*wordScale;
           halo.y+=cos(orbit)*.035*wordScale*(step(.004,id)*2.-1.);
+          // A few existing orbit dots form two web threads that pull toward the word.
+          float strandU=fract(hash*17.7), branch=step(.5,fract(hash*4.7));
+          vec3 anchor=vec3(.47,.23+sin(revealTime*.7)*.008,0.)*wordScale;
+          vec3 endpoint=vec3(mix(-.42,.30,branch),-.055,0.)*wordScale;
+          vec3 control=(anchor+endpoint)*.5-vec3(0.,.065*wordScale,0.);
+          vec3 thread=pow(1.-strandU,2.)*anchor+2.*strandU*(1.-strandU)*control+strandU*strandU*endpoint;
+          halo=mix(halo,thread,step(.004,id));
           target=mix(target,halo,satellite*motion);
           float settle=sin(landing*3.14159)*exp(-landing*2.);
           target.y+=sin(revealTime*2.8+column*8.)*.006*wordScale*landing*motion;
@@ -342,11 +351,11 @@ export default function Portrait2D({
             color=mix(aColor,bareColor.rgb,max(headset,gearMask));
             if(gearLayer>.5) color=aColor;
             color=mix(color,vec3(.10,.035,.03),opening*tongue*.35);
-            color=mix(color,vec3(.86,.64,.31),energy*.8);
-            color=mix(color,mix(vec3(.35,.90,.72),vec3(.68,.91,.88),seed),arrival*.9);
+            color=mix(color,vec3(.72,.16,.22),energy*.8);
+            color=mix(color,mix(vec3(.78,.85,.83),vec3(.96,.96,.91),seed),arrival*.9);
             float sweep=exp(-pow((wordPosition.x-(revealTime-2.4)*.55+.55)*18.,2.))*arrival*motion;
             color+=vec3(.65,.70,.55)*sweep;
-            color=mix(color,vec3(.94,.69,.32),satellite*arrival*motion);
+            color=mix(color,mix(vec3(.83,.16,.21),vec3(.84,.89,.87),step(.004,seed)),satellite*arrival*motion);
             glow+=energy*.6;
             opacity*=mix(1.,.82,energy);
 
@@ -361,6 +370,20 @@ export default function Portrait2D({
             vec3 c=mix(pow(color,vec3(.9))*1.3,accent*(.5+length(color)*.45),clamp(glow*.6,0.,.65));
             gl_FragColor=vec4(c,alpha*opacity*mix(1.,.18,trail));}`,
       });
+      const signatureStride = container.clientWidth < 600 ? 3 : 2;
+      const sampledGeometry = (indices: number[]) => {
+        const sampled = new THREE.BufferGeometry();
+        for (const [name, attribute] of Object.entries(geometry!.attributes))
+          sampled.setAttribute(name, attribute);
+        sampled.setIndex(indices);
+        return sampled;
+      };
+      signatureGeometry = sampledGeometry(
+        Array.from(
+          { length: Math.ceil(count / signatureStride) },
+          (_, i) => i * signatureStride,
+        ).filter((i) => i < count),
+      );
       const points = new THREE.Points(geometry, material);
       scene.add(points);
       let maskPlane: THREE.Mesh | undefined;
@@ -388,6 +411,9 @@ export default function Portrait2D({
       for (let i = 0; i < count; i++)
         if (gearMask[i] > 0.5) equipmentIndices.push(i);
       headsetGeometry.setIndex(equipmentIndices);
+      signatureHeadsetGeometry = sampledGeometry(
+        equipmentIndices.filter((_, i) => i % signatureStride === 0),
+      );
       headsetMaterial = new THREE.ShaderMaterial({
         vertexShader: material.vertexShader,
         fragmentShader: material.fragmentShader,
@@ -404,9 +430,10 @@ export default function Portrait2D({
       for (const [name, attribute] of Object.entries(geometry.attributes))
         trailGeometry.setAttribute(name, attribute);
       trailGeometry.setIndex(
-        Array.from({ length: Math.ceil(count / 12) }, (_, i) => i * 12).filter(
-          (i) => i < count,
-        ),
+        Array.from(
+          { length: Math.ceil(count / (12 * signatureStride)) },
+          (_, i) => i * 12 * signatureStride,
+        ).filter((i) => i < count),
       );
       const trails = [0.055, 0.11].map((offset) => {
         const paint = new THREE.ShaderMaterial({
@@ -487,7 +514,7 @@ export default function Portrait2D({
           ${choreographyShader}
           void main(){vec3 p=position;p.x*=mix(.75,1.,tongue);p.y=-.216+(position.y+.216)*tongue;
           p=choreograph(p,wordPosition,seed);
-          color=mix(aColor,vec3(.35,.90,.72),landing*.9);
+          color=mix(aColor,vec3(.88,.92,.89),landing*.9);
           keep=step(seed,mix(.85,.14,landing));
           gl_Position=projectionMatrix*modelViewMatrix*vec4(p,1.);
           gl_PointSize=mix(pointSize*(.85+seed*.25),wordPointSize*(1.+energy*1.5),max(landing,energy))*keep;}`,
@@ -977,6 +1004,10 @@ export default function Portrait2D({
           uniforms.motion.value = reduced.matches ? 0 : 1;
           if (!reduced.matches) uniforms.time.value += dt;
         }
+        points.geometry = signatureActive ? signatureGeometry! : geometry!;
+        headsetPoints.geometry = signatureActive
+          ? signatureHeadsetGeometry!
+          : headsetGeometry!;
         const maskActive = hoverBrush!.update(
           now,
           reduced.matches,
@@ -1005,6 +1036,8 @@ export default function Portrait2D({
       observer?.disconnect();
       removeEvents();
       geometry?.dispose();
+      signatureGeometry?.dispose();
+      signatureHeadsetGeometry?.dispose();
       material?.dispose();
       hoverBrush?.dispose();
       maskTexture?.dispose();
