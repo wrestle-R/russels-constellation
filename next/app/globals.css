@@ -1,15 +1,30 @@
 @import "@fontsource-variable/dm-sans";
 @import "@fontsource-variable/manrope";
+@font-face {
+  font-family: "Geist";
+  src: url("/fonts/GeistVF.woff2") format("woff2-variations");
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+}
 :root {
   color-scheme: dark;
-  --bg: #090e0c;
-  --surface: #111714;
-  --surface-2: #1a231e;
-  --ink: #e7ede8;
-  --muted: #8d9e93;
-  --line: #ffffff12;
-  --green: #59d58b;
-  --shadow: 0 15px 60px #0004;
+  --bg: #090909;
+  --surface: #151515;
+  --surface-2: #262626;
+  --ink: #ebebeb;
+  --muted: #a3a3a3;
+  --line: #303030;
+  --accent: #e5e5e5;
+  --raised: #1d1d1d;
+  --highlight: #ffffff12;
+  --base: #050505;
+  --well: #111111;
+  --paper-shadow:
+    inset 0 1px 0 var(--highlight), 0 2px 0 var(--base), 0 3px 0 var(--line),
+    0 8px 16px -8px #00000055;
+  --brand-ink: #e5e5e5;
+  --shadow: inset 0 1px 0 var(--highlight), 0 14px 40px #05050588;
 }
 * {
   box-sizing: border-box;
@@ -24,7 +39,7 @@ body {
 }
 body {
   font:
-    13px "DM Sans Variable",
+    13px "Geist",
     sans-serif;
   -webkit-font-smoothing: antialiased;
   overscroll-behavior: none;
@@ -51,12 +66,12 @@ a {
 }
 button:focus-visible,
 a:focus-visible {
-  outline: 2px solid var(--green);
+  outline: 2px solid var(--accent);
   outline-offset: 3px;
 }
 button:hover:not(:disabled),
 a:hover {
-  color: var(--green);
+  color: var(--accent);
 }
 svg {
   flex-shrink: 0;
@@ -79,8 +94,8 @@ svg {
   padding: 12px max(28px, env(safe-area-inset-right)) 12px
     max(28px, env(safe-area-inset-left));
   padding-top: max(12px, env(safe-area-inset-top));
-  background: var(--surface);
-  border-bottom: 1px solid var(--line);
+  background: #111111;
+  border-bottom: 1px solid #ffffff12;
 }
 .brand {
   display: flex;
@@ -132,11 +147,7 @@ svg {
   position: absolute;
   inset: 0;
   overflow: hidden;
-  background: radial-gradient(
-    ellipse at 45% 50%,
-    color-mix(in srgb, var(--green), transparent 97%),
-    transparent 70%
-  );
+  background: transparent;
 }
 .three-host {
   position: absolute;
@@ -161,9 +172,9 @@ svg {
   padding: 4px;
   gap: 3px;
   border: 1px solid var(--line);
-  border-radius: 14px;
-  background: color-mix(in srgb, var(--surface), transparent 12%);
-  backdrop-filter: blur(12px);
+  border-radius: 7px 10px 8px 6px;
+  background: linear-gradient(145deg, var(--raised), var(--surface));
+  box-shadow: var(--paper-shadow);
 }
 .zoom-controls .icon-button {
   border-radius: 9px;
@@ -234,7 +245,7 @@ svg {
   width: 156px;
   height: 122px;
   overflow: visible;
-  color: var(--green);
+  color: var(--accent);
 }
 .loading-threads {
   fill: none;
@@ -292,9 +303,9 @@ svg {
   width: max-content;
   max-width: calc(100% - 48px);
   border: 1px solid var(--line);
-  border-radius: 12px;
-  background: color-mix(in srgb, var(--surface), transparent 14%);
-  backdrop-filter: blur(14px);
+  border-radius: 7px 10px 8px 6px;
+  background: linear-gradient(145deg, var(--raised), var(--surface));
+  box-shadow: var(--paper-shadow);
   z-index: 2;
 }
 .legend-hint {
@@ -385,7 +396,8 @@ svg {
   padding: 18px 20px 20px;
   background: var(--surface);
   border: 1px solid var(--line);
-  border-radius: 16px;
+  border-radius: 8px 11px 9px 7px;
+  background: linear-gradient(145deg, var(--raised), var(--surface));
   box-shadow: var(--shadow);
   outline: none;
 }
@@ -447,14 +459,14 @@ svg {
   padding-top: 16px;
   margin-top: 18px;
   border-top: 1px solid var(--line);
-  color: var(--green);
+  color: var(--accent);
 }
 .song-details-link:hover {
   text-decoration: underline;
 }
 .song-details-link:focus-visible,
 .graph-tooltip:focus-visible {
-  outline: 2px solid var(--green);
+  outline: 2px solid var(--accent);
   outline-offset: 3px;
 }
 @media (max-width: 1200px) {
@@ -622,10 +634,10 @@ svg {
   width: 35px;
   height: 35px;
   border-radius: 10px;
-  border: 1px solid color-mix(in srgb, var(--green), transparent 45%);
+  border: 1px solid color-mix(in srgb, var(--brand-ink), transparent 45%);
   background: linear-gradient(
     145deg,
-    color-mix(in srgb, var(--green), transparent 70%),
+    color-mix(in srgb, var(--brand-ink), transparent 70%),
     color-mix(in srgb, var(--surface), transparent 10%)
   );
   box-shadow:
@@ -640,8 +652,8 @@ svg {
   position: absolute;
   inset: -4px 4px 4px -4px;
   border-radius: 10px;
-  border: 1px solid color-mix(in srgb, var(--green), transparent 65%);
-  background: color-mix(in srgb, var(--green), transparent 92%);
+  border: 1px solid color-mix(in srgb, var(--brand-ink), transparent 65%);
+  background: color-mix(in srgb, var(--brand-ink), transparent 92%);
   z-index: -1;
   transform: rotate(-8deg);
 }
@@ -652,8 +664,9 @@ svg {
   left: 5px;
   top: 5px;
   border-radius: 50%;
-  border: 2px solid var(--green);
-  box-shadow: inset 0 0 0 3px color-mix(in srgb, var(--green), transparent 84%);
+  border: 2px solid var(--brand-ink);
+  box-shadow: inset 0 0 0 3px
+    color-mix(in srgb, var(--brand-ink), transparent 84%);
   opacity: 0.8;
 }
 .brand-disc:after {
@@ -661,7 +674,7 @@ svg {
   position: absolute;
   width: 4px;
   height: 4px;
-  background: var(--green);
+  background: var(--brand-ink);
   border-radius: 50%;
   top: 8px;
   left: 8px;
@@ -676,12 +689,12 @@ svg {
   padding: 3px;
   background: var(--surface);
   border-radius: 4px;
-  box-shadow: 0 0 5px color-mix(in srgb, var(--green), transparent 70%);
+  box-shadow: 0 0 5px color-mix(in srgb, var(--brand-ink), transparent 70%);
 }
 .brand-bars i {
   width: 2px;
   height: 5px;
-  background: var(--green);
+  background: var(--brand-ink);
   border-radius: 2px;
 }
 .brand-bars i:nth-child(2) {
@@ -767,9 +780,9 @@ svg {
   font-weight: 600;
 }
 .portrait-toggle[aria-pressed="true"] {
-  color: var(--green);
+  color: var(--accent);
   background: var(--surface-2);
-  border-color: color-mix(in srgb, var(--green), transparent 65%);
+  border-color: color-mix(in srgb, var(--accent), transparent 65%);
 }
 .portrait-toggle[aria-busy="true"] {
   animation: gather-stars 1.6s ease-in-out infinite;
@@ -788,8 +801,8 @@ svg {
   text-decoration: none;
 }
 .portrait-toggle:hover {
-  color: var(--green);
-  border-color: var(--green);
+  color: var(--accent);
+  border-color: var(--accent);
 }
 .portrait-2d {
   position: absolute;
@@ -812,7 +825,7 @@ svg {
   color: var(--muted);
 }
 .portrait-error button {
-  color: var(--green);
+  color: var(--accent);
   padding: 10px 16px;
   border: 1px solid var(--line);
   border-radius: 20px;
@@ -834,7 +847,7 @@ svg {
   width: 4px;
   height: 4px;
   border-radius: 50%;
-  background: var(--green);
+  background: var(--accent);
 }
 .portrait-aries {
   position: absolute;
@@ -884,7 +897,7 @@ svg {
   opacity: 0.9;
 }
 .portrait-aries:focus-visible {
-  outline: 1px solid var(--green);
+  outline: 1px solid var(--accent);
   outline-offset: 5px;
   border-radius: 5px;
 }
@@ -908,7 +921,7 @@ svg {
 }
 .portrait-discoveries button:hover,
 .portrait-discoveries button:focus-visible {
-  color: var(--green);
+  color: var(--accent);
   opacity: 1;
 }
 .portrait-2d[data-holding="true"] {
@@ -1014,4 +1027,81 @@ svg {
 .universe[data-view="2D"] .legend-items button:not(.active):hover {
   background: transparent;
   color: var(--muted);
+}
+
+/* The same static Fine silt field used by the Blog and Portfolio. Transparent
+   canvas layers let it sit behind the music rather than on the portrait. */
+.constellation-app {
+  background-color: var(--bg);
+  background-image: url("/textures/fine-silt-dark.png");
+  background-repeat: repeat;
+  background-size: 384px 384px;
+}
+::selection {
+  background: color-mix(in srgb, var(--accent) 25%, var(--bg));
+  color: var(--ink);
+}
+.icon-button,
+.portrait-toggle,
+.legend-items button {
+  transition:
+    color 180ms ease,
+    background-color 180ms ease,
+    border-color 180ms ease,
+    box-shadow 180ms ease;
+}
+/* Keep the original navigation on both views. */
+.topbar {
+  --surface: #111111;
+  --surface-2: #202020;
+  --muted: #999999;
+  --ink: #ebebeb;
+  --line: #ffffff12;
+  --accent: var(--brand-ink);
+  font-family: "DM Sans Variable", sans-serif;
+  color: #ebebeb;
+}
+.topbar .brand-subtitle,
+.topbar .icon-button {
+  color: #999999;
+}
+.topbar .icon-button {
+  border-radius: 50%;
+}
+.topbar .icon-button:hover {
+  background: #202020;
+  color: #ebebeb;
+}
+.topbar .portrait-toggle {
+  border-color: #ffffff12;
+  border-radius: 18px;
+  color: #999999;
+}
+.topbar .portrait-toggle:hover {
+  border-color: var(--brand-ink);
+  color: var(--brand-ink);
+}
+.topbar :is(button, a):focus-visible {
+  outline-color: var(--brand-ink);
+}
+.topbar .brand-bars {
+  background: #111111;
+}
+.legend-items button.active,
+.legend-items button:focus-visible {
+  background: var(--well);
+  box-shadow:
+    inset 0 1px 3px #05050588,
+    0 1px 0 var(--highlight);
+}
+.song-details dl {
+  padding: 12px;
+  border-radius: 5px;
+  background: var(--well);
+  box-shadow:
+    inset 0 1px 3px #05050588,
+    0 1px 0 var(--highlight);
+}
+.song-details dd {
+  font-variant-numeric: tabular-nums;
 }

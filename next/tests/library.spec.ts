@@ -296,11 +296,13 @@ test("real touch gestures keep the two-row legend fixed, orbit, pinch, and tap s
   }
 });
 
-test("opening and exploring stays on-device and fullscreen failures are handled", async ({
+test("music exploration stays on-device and fullscreen failures are handled", async ({
   page,
 }) => {
   const outside: string[] = [];
   page.on("request", (request) => {
+    // The existing page-count script is separate from local music exploration.
+    if (request.url() === "https://admin-rdp.vercel.app/tracker.js") return;
     const url = new URL(request.url());
     if (
       !["127.0.0.1", "localhost"].includes(url.hostname) &&

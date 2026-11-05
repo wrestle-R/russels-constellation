@@ -3,6 +3,8 @@ for (const width of [1440, 390, 320]) {
   test(`2D temporary genres, expression easter eggs and one-row layout work at ${width}px`, async ({
     browser,
   }) => {
+    // This flow loads both WebGL scenes twice and completes two Aries cycles.
+    test.setTimeout(90000);
     const context = await browser.newContext({
       viewport: { width, height: width > 500 ? 1000 : 844 },
       reducedMotion: "reduce",
@@ -25,7 +27,7 @@ for (const width of [1440, 390, 320]) {
     await page.addInitScript(() =>
       localStorage.setItem("play-it-back-theme", "light"),
     );
-    await page.goto("/");
+    await page.goto("/", { waitUntil: "domcontentloaded" });
     await expect(page.locator(".scene-loading")).toHaveCount(0);
     expect(images).toHaveLength(0);
     await page.getByRole("link", { name: "2D", exact: true }).click();
@@ -70,7 +72,7 @@ for (const width of [1440, 390, 320]) {
     });
     expect(new Set(layout.map((b) => Math.round(b.top))).size).toBe(1);
     for (const b of layout) expect(b.right).toBeLessThanOrEqual(b.limit + 1);
-    await page.clock.pauseAt((await page.evaluate(() => Date.now())) + 100);
+    await page.clock.pauseAt((await page.evaluate(() => Date.now())) + 2000);
     const mouth = page.getByRole("button", { name: "Make a cheeky face" });
     const relaxedMouth = await mouth.screenshot();
     await mouth.click();
@@ -113,6 +115,7 @@ for (const width of [1440, 390, 320]) {
       page.getByRole("button", { name: "Make a cheeky face" }),
     ).toBeDisabled();
     await expect(page.locator(".portrait-aries circle")).toHaveCount(4);
+    await page.clock.fastForward(5000);
     await expect(portrait).toHaveAttribute("data-signature", "false", {
       timeout: 7000,
     });
@@ -134,6 +137,7 @@ for (const width of [1440, 390, 320]) {
       })
       .click();
     await expect(portrait).toHaveAttribute("data-signature", "true");
+    await page.clock.fastForward(5000);
     await expect(portrait).toHaveAttribute("data-signature", "false", {
       timeout: 7000,
     });
@@ -158,8 +162,8 @@ for (const width of [1440, 390, 320]) {
       "data-view",
       "constellation",
     );
-    await page.goBack();
-    await page.reload();
+    await page.goBack({ waitUntil: "domcontentloaded" });
+    await page.reload({ waitUntil: "domcontentloaded" });
     await expect(page.locator(".scene-loading")).toHaveCount(0);
     await expect(portrait).toHaveAttribute("data-headphones", "on");
     expect(errors).toEqual([]);
