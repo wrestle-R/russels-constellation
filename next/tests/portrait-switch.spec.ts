@@ -1,6 +1,6 @@
 import { test, expect } from "@playwright/test";
 for (const width of [1440, 390, 320]) {
-  test(`2D temporary genres, expression easter eggs and one-row layout work at ${width}px`, async ({
+  test(`2D expression easter eggs and clean layout work at ${width}px`, async ({
     browser,
   }) => {
     // This flow loads both WebGL scenes twice and completes two Aries cycles.
@@ -30,6 +30,9 @@ for (const width of [1440, 390, 320]) {
     await page.goto("/", { waitUntil: "domcontentloaded" });
     await expect(page.locator(".scene-loading")).toHaveCount(0);
     expect(images).toHaveLength(0);
+    await expect(
+      page.getByRole("navigation", { name: "Genre legend" }),
+    ).toBeVisible();
     await page.getByRole("link", { name: "2D", exact: true }).click();
     await expect(page).toHaveURL(/\/2D$/);
     await expect(page.locator(".scene-loading")).toHaveCount(0);
@@ -41,37 +44,9 @@ for (const width of [1440, 390, 320]) {
     await expect(page.locator(".portrait-tools")).toHaveCount(0);
     await page.mouse.move(1, 5);
     const before = await canvas.screenshot();
-    const pop = page.getByRole("button", { name: "Pop", exact: true });
-    if (width > 500) {
-      await pop.hover();
-      await expect(portrait).toHaveAttribute("data-portrait-genre", "Pop");
-      await pop.click();
-      await page.mouse.move(1, 5);
-    } else {
-      await pop.dispatchEvent("pointerdown", { pointerType: "touch" });
-      await expect(portrait).toHaveAttribute("data-portrait-genre", "Pop");
-      await pop.dispatchEvent("pointerup", { pointerType: "touch" });
-      await pop.tap();
-    }
-    await expect(portrait).toHaveAttribute("data-portrait-genre", "All genres");
-    await page.evaluate(
-      () =>
-        new Promise((resolve) =>
-          requestAnimationFrame(() => requestAnimationFrame(resolve)),
-        ),
-    );
-    expect((await canvas.screenshot()).equals(before)).toBe(true);
-    const layout = await page.locator(".legend-items").evaluate((row) => {
-      const bounds = row.getBoundingClientRect();
-      return Array.from(row.querySelectorAll("button"))
-        .filter((b) => getComputedStyle(b).visibility !== "hidden")
-        .map((b) => {
-          const r = b.getBoundingClientRect();
-          return { top: r.top, right: r.right, limit: bounds.right };
-        });
-    });
-    expect(new Set(layout.map((b) => Math.round(b.top))).size).toBe(1);
-    for (const b of layout) expect(b.right).toBeLessThanOrEqual(b.limit + 1);
+    await expect(
+      page.getByRole("navigation", { name: "Genre legend" }),
+    ).toHaveCount(0);
     await page.clock.pauseAt((await page.evaluate(() => Date.now())) + 2000);
     const mouth = page.getByRole("button", { name: "Make a cheeky face" });
     const relaxedMouth = await mouth.screenshot();

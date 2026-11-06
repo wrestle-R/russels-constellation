@@ -249,7 +249,7 @@ export default function Explorer({
             <Minus size={20} />
           </button>
         </div>
-        {availableGenres.length > 0 && (
+        {!portrait2D && availableGenres.length > 0 && (
           <nav className="genre-legend" aria-label="Genre legend">
             <span className="legend-hint">
               GENRES{" "}

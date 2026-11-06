@@ -87,9 +87,7 @@ export default function Portrait2D({
     let tongueMaterial: THREE.ShaderMaterial | undefined;
     let headsetGeometry: THREE.BufferGeometry | undefined;
     let headsetMaterial: THREE.ShaderMaterial | undefined;
-    let trailGeometry: THREE.BufferGeometry | undefined;
     let tooltip: HTMLButtonElement | undefined;
-    const trailMaterials: THREE.ShaderMaterial[] = [];
     let starsGeometry: THREE.BufferGeometry | undefined;
     let starsMaterial: THREE.ShaderMaterial | undefined;
     let observer: ResizeObserver | undefined;
@@ -177,11 +175,26 @@ export default function Portrait2D({
           if (pixels[(y * 1200 + x) * 4 + 3] > 128)
             glyph.push((x - 600) / 1200, (160 - y) / 1200);
       const wordPositions = new Float32Array(count * 3);
+      const glyphCount = glyph.length / 2;
+      const gcd = (a: number, b: number): number => (b ? gcd(b, a % b) : a);
+      let stride = Math.floor(count * 0.618);
+      while (gcd(stride, count) !== 1) stride++;
       for (let i = 0; i < count; i++) {
-        const target = ((i * 997) % (glyph.length / 2)) * 2;
-        wordPositions[i * 3] = glyph[target] + Math.sin(i * 127.1) * 0.0006;
-        wordPositions[i * 3 + 1] =
-          glyph[target + 1] + Math.cos(i * 311.7) * 0.0006;
+        const slot = (i * stride) % count;
+        const target = (slot % glyphCount) * 2;
+        wordPositions[i * 3] = glyph[target];
+        wordPositions[i * 3 + 1] = glyph[target + 1];
+        wordPositions[i * 3 + 2] = slot < glyphCount ? 1 : 0;
+      }
+      // Rigid spatial patches: neighbouring headset dots travel together.
+      const gearPieces = new Float32Array(count * 3);
+      for (let i = 0; i < count; i++) {
+        const x = Math.floor((positions[i * 3] + 0.5) / 0.014);
+        const y = Math.floor((positions[i * 3 + 1] + 0.5) / 0.014);
+        gearPieces[i * 3] = (x + 0.5) * 0.014 - 0.5;
+        gearPieces[i * 3 + 1] = (y + 0.5) * 0.014 - 0.5;
+        const hash = Math.sin(x * 127.1 + y * 311.7) * 43758.5453;
+        gearPieces[i * 3 + 2] = hash - Math.floor(hash);
       }
       renderer = new THREE.WebGLRenderer({
         alpha: true,
@@ -214,6 +227,10 @@ export default function Portrait2D({
       );
       geometry.setAttribute("seed", new THREE.Float32BufferAttribute(seeds, 1));
       geometry.setAttribute(
+        "gearPiece",
+        new THREE.Float32BufferAttribute(gearPieces, 3),
+      );
+      geometry.setAttribute(
         "tongueColor",
         new THREE.Float32BufferAttribute(tongueColors, 4),
       );
@@ -238,40 +255,21 @@ export default function Portrait2D({
         vec3 choreograph(vec3 origin, vec3 glyph, float id){
           landing=0.; energy=0.; satellite=0.;
           if(signature<=0.) return origin;
-          float progress=clamp(signature-trailOffset*sin(signature*3.14159),0.,1.);
+          float progress=clamp(signature,0.,1.);
           float column=clamp(glyph.x+.5,0.,1.);
-          landing=smoothstep(.46+column*.14,.84+column*.14,progress);
-          float winding=smoothstep(.055,.44,progress);
-          float lane=floor((origin.y+.5)*9.);
-          float hash=fract(sin(dot(origin.xy,vec2(127.1,311.7)))*43758.5453);
-          float angle=mix(atan(origin.y,origin.x),hash*6.28318,winding)+progress*7.8+lane*.28+revealTime*.55;
-          float radius=(.22+lane*.018+hash*.025)*min(wordScale,1.5);
-          vec3 ribbon=vec3(cos(angle)*radius,sin(angle)*radius*.48,sin(angle)*.12);
-          ribbon.y+=sin(angle*2.+lane)*.025;
-          vec3 target=glyph*wordScale;
-          satellite=1.-step(.008,id);
-          float orbit=hash*6.28318+revealTime*(.8+id*20.);
-          vec3 halo=vec3(cos(orbit)*.49,sin(orbit)*.18,sin(orbit)*.06)*wordScale;
-          halo.y+=cos(orbit)*.035*wordScale*(step(.004,id)*2.-1.);
-          // A few existing orbit dots form two web threads that pull toward the word.
-          float strandU=fract(hash*17.7), branch=step(.5,fract(hash*4.7));
-          vec3 anchor=vec3(.47,.23+sin(revealTime*.7)*.008,0.)*wordScale;
-          vec3 endpoint=vec3(mix(-.42,.30,branch),-.055,0.)*wordScale;
-          vec3 control=(anchor+endpoint)*.5-vec3(0.,.065*wordScale,0.);
-          vec3 thread=pow(1.-strandU,2.)*anchor+2.*strandU*(1.-strandU)*control+strandU*strandU*endpoint;
-          halo=mix(halo,thread,step(.004,id));
-          target=mix(target,halo,satellite*motion);
-          float settle=sin(landing*3.14159)*exp(-landing*2.);
-          target.y+=sin(revealTime*2.8+column*8.)*.006*wordScale*landing*motion;
-          target.y+=settle*(.11+hash*.04)*motion;
-          float proximity=exp(-pow(length(target.xy-wordPointer)*9.,2.))*motion;
-          target.xy+=(target.xy-wordPointer)*proximity*.32;
-          vec3 p=mix(origin*(1.-sin(progress*3.14159)*.1),ribbon,winding);
-          p=mix(p,target,landing);
-          // Project the orbit depth before the portrait group's pixel-scale transform.
-          p.xy*=1.+p.z*.25;
-          p.z=0.;
-          energy=sin(progress*3.14159)*(1.-landing*.65);
+          vec2 centre=(floor((origin.xy+.5)/.065)+.5)*.065-.5;
+          float hash=fract(sin(dot(centre,vec2(127.1,311.7)))*43758.5453);
+          float fracture=smoothstep(.015,.25,progress)*(1.-smoothstep(.32,.72,progress));
+          float turn=(hash-.5)*1.2*fracture;
+          vec2 local=mat2(cos(turn),-sin(turn),sin(turn),cos(turn))*(origin.xy-centre);
+          vec2 outward=normalize(centre+vec2(.001))*(.055+hash*.08)*fracture;
+          vec3 shards=vec3(centre+local+outward,0.);
+          shards.y+=sin(fracture*3.14159)*(.015+hash*.035);
+          landing=smoothstep(.20+column*.08,.64+column*.10,progress);
+          vec3 target=vec3(glyph.xy*wordScale,0.);
+          vec3 p=mix(shards,target,landing);
+          p.y+=sin(landing*3.14159)*(.045+hash*.025)*wordScale*(1.-landing);
+          energy=0.;
           return p;
         }
       `;
@@ -280,8 +278,9 @@ export default function Portrait2D({
         portraitAspect: { value: source.width / source.height },
         time: { value: 0 },
         amount: { value: 0 },
-        accent: { value: new THREE.Color("#67d8bc") },
+        accent: { value: new THREE.Color("#e0e0e0") },
         pointer: { value: new THREE.Vector2(10, 10) },
+        fieldExtent: { value: new THREE.Vector2(1, 1) },
         hover: { value: 0 },
         motion: { value: 1 },
         light: { value: 0 },
@@ -305,10 +304,10 @@ export default function Portrait2D({
         depthTest: false,
         depthWrite: false,
         uniforms,
-        vertexShader: `attribute vec3 aColor, wordPosition; attribute float seed; attribute vec4 tongueColor, bareColor; attribute float headphoneMask, gearMask;
+        vertexShader: `attribute vec3 aColor, wordPosition, gearPiece; attribute float seed; attribute vec4 tongueColor, bareColor; attribute float headphoneMask, gearMask;
           uniform float time, amount, motion, pointSize, hover, density, tongue, bare, gearLayer;
           uniform sampler2D hoverMask; uniform float portraitAspect;
-          uniform vec2 pointer; uniform vec3 profile, ripple;
+          uniform vec2 pointer,fieldExtent; uniform vec3 profile, ripple;
           varying vec3 color; varying float glow, keep, opacity;
           ${choreographyShader}
           void main(){
@@ -326,38 +325,47 @@ export default function Portrait2D({
             p.xy+=motion*(dance*amount+normalize(p.xy-ripple.xy+vec2(.001))*ring*.026);
             float headset = headphoneMask * bare;
             float revealed=smoothstep(.06,.62,bare);
-            // The ear stays anchored; the original headset has its own lift layer.
+            // The shell separates as intact patches, then recedes into the field.
+            float pieceProgress=0.;
             if(gearLayer>.5){
-              float lift=bare*bare*(3.-2.*bare);
-              float turn=-.035*sin(bare*3.14159)*motion;
-              p.xy=mat2(cos(turn),-sin(turn),sin(turn),cos(turn))*p.xy;
-              p.x*=1.+lift*.025*motion;
-              p.y+=lift*.028*motion;
+              float delay=gearPiece.z*.10;
+              pieceProgress=smoothstep(delay,.98,bare);
+              float peel=smoothstep(0.,.48,pieceProgress);
+              float depth=smoothstep(.18,1.,pieceProgress);
+              float side=sign(gearPiece.x+.001);
+              vec2 centre=gearPiece.xy;
+              float angle=side*(.28+gearPiece.z*.55)*peel;
+              vec2 local=p.xy-centre;
+              local=mat2(cos(angle),-sin(angle),sin(angle),cos(angle))*local;
+              local*=mix(1.,.18,depth);
+              float lane=fract(gearPiece.z*13.713);
+              vec2 destination=vec2(side*fieldExtent.x*(.72+.23*gearPiece.z),mix(centre.y,(lane*2.-1.)*fieldExtent.y*.9,.65));
+              destination=clamp(destination,-fieldExtent,fieldExtent);
+              p.xy=mix(centre,destination,depth)+local;
+              p.y+=sin(pieceProgress*3.14159)*.055;
             }
             float pink = step(tongueColor.g*.96,tongueColor.b)*step(tongueColor.g*1.12,tongueColor.r)*step(.3,tongueColor.a)*step(.207,-position.y)*step(-position.y,.29)*step(seed,.85);
             float opening = exp(-pow(position.x/.075,2.)-pow((position.y+.216)/.005,2.));
             opacity = mix(1.,bareColor.a,headset)*(1.-pink*tongue*.95);
             opacity=mix(opacity,bareColor.a*revealed,gearMask);
-            if(gearLayer>.5){
-              float band=smoothstep(.08,.22,position.y);
-              opacity=1.-smoothstep(mix(.15,.06,band),mix(.95,.65,band),bare);
-            }
+            if(gearLayer>.5) opacity=1.-smoothstep(.72,1.,pieceProgress);
             p=choreograph(p,wordPosition,seed);
             float arrival=landing;
             float shade=dot(aColor,vec3(.2126,.7152,.0722));
             // Keep finer light edges, while opening space through broad flat areas.
-            keep=step(seed,mix(density+max(0.,shade-.45)*.18,.14,arrival));
+            keep=mix(step(seed,density+max(0.,shade-.45)*.18),wordPosition.z,arrival);
+            if(gearLayer<.5) {
+              opacity=mix(opacity,1.,arrival);
+              opacity*=mix(1.-smoothstep(.18,.50,signature),1.,wordPosition.z);
+            }
+            else opacity*=1.-arrival;
             glow=amount*(.35+.35*sin(p.y*12.-time*1.8+seed*2.)) + ring*.25;
             color=mix(aColor,bareColor.rgb,max(headset,gearMask));
-            if(gearLayer>.5) color=aColor;
+            if(gearLayer>.5) color=mix(aColor,vec3(.018),smoothstep(.45,.98,pieceProgress));
             color=mix(color,vec3(.10,.035,.03),opening*tongue*.35);
-            color=mix(color,vec3(.72,.16,.22),energy*.8);
-            color=mix(color,mix(vec3(.78,.85,.83),vec3(.96,.96,.91),seed),arrival*.9);
-            float sweep=exp(-pow((wordPosition.x-(revealTime-2.4)*.55+.55)*18.,2.))*arrival*motion;
-            color+=vec3(.65,.70,.55)*sweep;
-            color=mix(color,mix(vec3(.83,.16,.21),vec3(.84,.89,.87),step(.004,seed)),satellite*arrival*motion);
-            glow+=energy*.6;
-            opacity*=mix(1.,.82,energy);
+            color=mix(color,vec3(.89,.88,.86),smoothstep(.65,1.,arrival));
+            glow+=energy*.12;
+            opacity*=mix(1.,.96,energy);
 
             if(gearLayer<.5) opacity*=1.-texture2D(hoverMask,vec2(position.x/portraitAspect+.5,position.y+.5)).a;
             gl_Position=projectionMatrix*modelViewMatrix*vec4(p,1.);
@@ -379,10 +387,9 @@ export default function Portrait2D({
         return sampled;
       };
       signatureGeometry = sampledGeometry(
-        Array.from(
-          { length: Math.ceil(count / signatureStride) },
-          (_, i) => i * signatureStride,
-        ).filter((i) => i < count),
+        Array.from({ length: count }, (_, i) => i).filter(
+          (i) => i % signatureStride === 0 || wordPositions[i * 3 + 2] > 0.5,
+        ),
       );
       const points = new THREE.Points(geometry, material);
       scene.add(points);
@@ -425,37 +432,6 @@ export default function Portrait2D({
       const headsetPoints = new THREE.Points(headsetGeometry, headsetMaterial);
       headsetPoints.renderOrder = 1;
       scene.add(headsetPoints);
-      // Reuse real portrait vertices for two faint trails; no new particles spawn.
-      trailGeometry = new THREE.BufferGeometry();
-      for (const [name, attribute] of Object.entries(geometry.attributes))
-        trailGeometry.setAttribute(name, attribute);
-      trailGeometry.setIndex(
-        Array.from(
-          { length: Math.ceil(count / (12 * signatureStride)) },
-          (_, i) => i * 12 * signatureStride,
-        ).filter((i) => i < count),
-      );
-      const trails = [0.055, 0.11].map((offset) => {
-        const paint = new THREE.ShaderMaterial({
-          vertexShader: material!.vertexShader,
-          fragmentShader: material!.fragmentShader,
-          uniforms: {
-            ...uniforms,
-            trailOffset: { value: offset },
-            trail: { value: 1 },
-          },
-          transparent: true,
-          depthTest: false,
-          depthWrite: false,
-          blending: THREE.AdditiveBlending,
-        });
-        trailMaterials.push(paint);
-        const trail = new THREE.Points(trailGeometry!, paint);
-        trail.renderOrder = -1;
-        trail.visible = false;
-        scene.add(trail);
-        return trail;
-      });
       const tonguePositions: number[] = [],
         tonguePaint: number[] = [],
         tongueSeeds: number[] = [],
@@ -515,7 +491,7 @@ export default function Portrait2D({
           void main(){vec3 p=position;p.x*=mix(.75,1.,tongue);p.y=-.216+(position.y+.216)*tongue;
           p=choreograph(p,wordPosition,seed);
           color=mix(aColor,vec3(.88,.92,.89),landing*.9);
-          keep=step(seed,mix(.85,.14,landing));
+          keep=step(seed,.85)*(1.-landing);
           gl_Position=projectionMatrix*modelViewMatrix*vec4(p,1.);
           gl_PointSize=mix(pointSize*(.85+seed*.25),wordPointSize*(1.+energy*1.5),max(landing,energy))*keep;}`,
         fragmentShader: `uniform float tongue;varying vec3 color;varying float keep;
@@ -547,11 +523,12 @@ export default function Portrait2D({
           motion: uniforms.motion,
           accent: uniforms.accent,
           light: uniforms.light,
+          bare: uniforms.bare,
           pixelRatio: { value: renderer.getPixelRatio() },
         },
-        vertexShader: `uniform float time, amount, motion, pixelRatio; varying float alpha;
+        vertexShader: `uniform float time, amount, motion, pixelRatio, bare; varying float alpha;
           void main(){float t=time*.025*motion;vec3 p=position;float a=atan(p.y,p.x)+t;float radius=length(p.xy);p.xy=vec2(cos(a),sin(a))*radius;
-          alpha=(.12+amount*.18)*(.5+.5*sin(position.x*60.+time));
+          alpha=(.12+amount*.18)*(.5+.5*sin(position.x*60.+time))*(1.-bare*.65);
           gl_Position=projectionMatrix*modelViewMatrix*vec4(p,1.);gl_PointSize=(1.+amount)*pixelRatio;}`,
         fragmentShader: `uniform vec3 accent; uniform float light, amount; varying float alpha;void main(){float r=length(gl_PointCoord-.5)*2.;if(r>1.)discard;gl_FragColor=vec4(mix(vec3(.62,.72,.68),accent,amount*.6)*(1.-light*.7),alpha*(1.-r));}`,
       });
@@ -576,7 +553,7 @@ export default function Portrait2D({
         const legend =
           container.parentElement
             ?.querySelector(".genre-legend")
-            ?.getBoundingClientRect().height || 100;
+            ?.getBoundingClientRect().height || 0;
         fit = Math.min(
           (width - (width < 600 ? 28 : 160)) / (source.width / source.height),
           height - legend - 60,
@@ -832,6 +809,7 @@ export default function Portrait2D({
         tongueStart = -Infinity,
         lastSignature = options.current.signature,
         bareVelocity = 0,
+        lastDepth = -1,
         signatureStart = -Infinity,
         signatureActive = false,
         tongueActive = false;
@@ -854,6 +832,10 @@ export default function Portrait2D({
         zoom +=
           (targetZoom - zoom) * (reduced.matches ? 1 : 1 - Math.exp(-dt * 12));
         points.scale.setScalar(fit * zoom);
+        uniforms.fieldExtent.value.set(
+          (width * 0.47) / (fit * zoom),
+          (height * 0.46) / (fit * zoom),
+        );
         if (maskPlane) {
           maskPlane.scale.copy(points.scale);
           maskPlane.position.copy(points.position);
@@ -870,11 +852,6 @@ export default function Portrait2D({
           "--discovery-top",
           height / 2 - points.position.y + fit * 0.41 + "px",
         );
-        for (const trail of trails) {
-          trail.scale.copy(points.scale);
-          trail.position.copy(points.position);
-          trail.visible = signatureActive && !reduced.matches;
-        }
         container.style.setProperty(
           "--mouth-left",
           width / 2 - fit * zoom * 0.13 + "px",
@@ -957,6 +934,7 @@ export default function Portrait2D({
               bareVelocity,
               bareTarget,
               dt,
+              4.8,
             );
             uniforms.bare.value = gearStep.position;
             bareVelocity = gearStep.velocity;
@@ -1004,6 +982,16 @@ export default function Portrait2D({
           uniforms.motion.value = reduced.matches ? 0 : 1;
           if (!reduced.matches) uniforms.time.value += dt;
         }
+        const depth = smooth(uniforms.bare.value);
+        const roundedDepth = Math.round(depth * 1000) / 1000;
+        if (roundedDepth !== lastDepth) {
+          lastDepth = roundedDepth;
+          container.style.setProperty(
+            "--headphone-depth",
+            roundedDepth.toString(),
+          );
+          container.dataset.headphoneDepth = roundedDepth.toString();
+        }
         points.geometry = signatureActive ? signatureGeometry! : geometry!;
         headsetPoints.geometry = signatureActive
           ? signatureHeadsetGeometry!
@@ -1048,8 +1036,9 @@ export default function Portrait2D({
       tooltip?.remove();
       headsetGeometry?.dispose();
       headsetMaterial?.dispose();
-      trailGeometry?.dispose();
-      trailMaterials.forEach((paint) => paint.dispose());
+      renderer?.domElement.parentElement?.style.removeProperty(
+        "--headphone-depth",
+      );
       starsGeometry?.dispose();
       starsMaterial?.dispose();
       renderer?.dispose();

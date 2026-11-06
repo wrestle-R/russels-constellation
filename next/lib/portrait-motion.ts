@@ -19,8 +19,8 @@ export function stepHeadphones(
   velocity: number,
   target: number,
   dt: number,
+  omega = 12,
 ) {
-  const omega = 12;
   const elapsed = Math.max(0, Math.min(0.05, dt));
   const offset = position - target;
   const decay = Math.exp(-omega * elapsed);

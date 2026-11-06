@@ -1105,3 +1105,36 @@ svg {
 .song-details dd {
   font-variant-numeric: tabular-nums;
 }
+
+/* The grain remains visible at rest; only the field darkens as the gear recedes. */
+.portrait-2d::before,
+.portrait-2d::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+}
+.portrait-2d::before {
+  background: #090909 url("/textures/fine-silt-dark.png") repeat;
+  background-size: 384px 384px;
+  filter: grayscale(1) brightness(1.8);
+}
+.portrait-2d::after {
+  background: #000;
+  opacity: calc(var(--headphone-depth, 0) * 0.6);
+}
+.portrait-2d > canvas {
+  position: relative;
+  z-index: 1;
+}
+
+.universe[data-view="2D"] .song-details {
+  max-height: calc(100% - 32px);
+}
+@media (max-width: 680px), (pointer: coarse) {
+  .universe[data-view="2D"] .song-details {
+    bottom: calc(16px + env(safe-area-inset-bottom));
+    max-height: min(310px, 45dvh);
+  }
+}

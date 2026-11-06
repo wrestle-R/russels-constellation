@@ -51,6 +51,25 @@ test("hover responds to speed, fades, and yields to the headphones", async ({
   await page.clock.runFor(1000);
   await expect(portrait).toHaveAttribute("data-headphones", "off");
   await expect(portrait.locator("canvas")).toHaveCount(1);
+  expect(
+    Number(await portrait.getAttribute("data-headphone-depth")),
+  ).toBeGreaterThan(0.97);
+  expect(
+    await portrait.evaluate((host) =>
+      Number(getComputedStyle(host, "::after").opacity),
+    ),
+  ).toBeGreaterThan(0.58);
+  await page
+    .getByRole("button", { name: "Put headphones back on" })
+    .first()
+    .click();
+  await page.clock.runFor(1900);
+  expect(
+    Number(await portrait.getAttribute("data-headphone-depth")),
+  ).toBeLessThan(0.005);
+  await expect(
+    page.getByRole("navigation", { name: "Genre legend" }),
+  ).toHaveCount(0);
 });
 
 test("touch keeps headset state through Aries without activating the hover mask", async ({
