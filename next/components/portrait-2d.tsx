@@ -708,6 +708,9 @@ export default function Portrait2D({
       });
       const pointerTarget = new THREE.Vector2(10, 10);
       let hovering = false;
+      const contacts = new Set<number>();
+      let touchGesture:
+        { id: number; x: number; y: number; dragging: boolean } | undefined;
       const move = (event: PointerEvent) => {
         if (tooltip!.contains(event.target as Node)) return;
         const target = event.target as HTMLElement;
@@ -723,7 +726,21 @@ export default function Portrait2D({
           (height / 2 - (event.clientY - box.top) - points.position.y) /
             (fit * zoom),
         );
-        if (event.pointerType === "mouse") {
+        let reveal = event.pointerType === "mouse";
+        if (touchGesture?.id === event.pointerId) {
+          if (
+            !touchGesture.dragging &&
+            Math.hypot(
+              event.clientX - touchGesture.x,
+              event.clientY - touchGesture.y,
+            ) > 6
+          ) {
+            touchGesture.dragging = true;
+            clearSong();
+          }
+          reveal = touchGesture.dragging;
+        }
+        if (reveal) {
           if (
             Math.abs(pointerTarget.x) < 0.35 &&
             pointerTarget.y > -0.46 &&
@@ -752,12 +769,30 @@ export default function Portrait2D({
           hoverBrush!.clear();
       };
       const tap = (event: PointerEvent) => {
+        if (event.pointerType !== "mouse") {
+          contacts.add(event.pointerId);
+          if (contacts.size > 1) {
+            touchGesture = undefined;
+            hoverBrush!.clear();
+            clearSong();
+            return;
+          }
+        }
         pauseMaskForGear(event);
         if ((event.target as HTMLElement).closest("button,input,label")) {
           if (!tooltip!.contains(event.target as Node)) clearSong();
           return;
         }
         if (uniforms.signature.value > 0) return;
+        if (event.pointerType !== "mouse") {
+          touchGesture = {
+            id: event.pointerId,
+            x: event.clientX,
+            y: event.clientY,
+            dragging: false,
+          };
+          renderer!.domElement.setPointerCapture(event.pointerId);
+        }
         move(event);
         if (event.pointerType === "touch") showSong(event);
         uniforms.ripple.value.set(
@@ -765,6 +800,20 @@ export default function Portrait2D({
           pointerTarget.y,
           uniforms.time.value,
         );
+      };
+      const endTouch = (event: PointerEvent) => {
+        contacts.delete(event.pointerId);
+        if (touchGesture?.id !== event.pointerId) return;
+        touchGesture = undefined;
+        hovering = false;
+        if (event.type === "pointercancel") hoverBrush!.clear();
+        else hoverBrush!.leave();
+      };
+      const cancelTouch = () => {
+        contacts.clear();
+        touchGesture = undefined;
+        hoverBrush!.clear();
+        hovering = false;
       };
       const leave = () => {
         hoverBrush!.leave();
@@ -791,7 +840,11 @@ export default function Portrait2D({
       container.addEventListener("focusin", pauseMaskForGear);
       container.addEventListener("pointerdown", tap);
       container.addEventListener("pointermove", move);
+      container.addEventListener("pointerup", endTouch);
+      container.addEventListener("pointercancel", endTouch);
+      container.addEventListener("lostpointercapture", endTouch);
       container.addEventListener("pointerleave", leave);
+      window.addEventListener("blur", cancelTouch);
       container.addEventListener("wheel", wheel, { passive: false });
       removeEvents = () => {
         renderer!.domElement.removeEventListener("click", chooseSong);
@@ -799,7 +852,11 @@ export default function Portrait2D({
         container.removeEventListener("focusin", pauseMaskForGear);
         container.removeEventListener("pointerdown", tap);
         container.removeEventListener("pointermove", move);
+        container.removeEventListener("pointerup", endTouch);
+        container.removeEventListener("pointercancel", endTouch);
+        container.removeEventListener("lostpointercapture", endTouch);
         container.removeEventListener("pointerleave", leave);
+        window.removeEventListener("blur", cancelTouch);
         container.removeEventListener("wheel", wheel);
       };
       let previous = performance.now();

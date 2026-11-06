@@ -135,3 +135,115 @@ test("a failed mask asset leaves the original portrait and controls available", 
   ).toBeGreaterThan(20000);
   expect(errors).toEqual([]);
 });
+
+for (const reducedMotion of ["no-preference", "reduce"] as const) {
+  test(`phone finger drag reveals the mask and cleans up on release (${reducedMotion})`, async ({
+    browser,
+  }) => {
+    test.setTimeout(90000);
+    const context = await browser.newContext({
+      viewport: { width: 390, height: 844 },
+      isMobile: true,
+      hasTouch: true,
+      reducedMotion,
+    });
+    const page = await context.newPage();
+    const errors: string[] = [];
+    page.on("pageerror", (error) => errors.push(error.message));
+    page.on("console", (message) => {
+      if (message.type() === "error") errors.push(message.text());
+    });
+    await page.clock.install();
+    await page.goto("/2D");
+    await expect(page.locator(".scene-loading")).toHaveCount(0);
+    await page.clock.pauseAt((await page.evaluate(() => Date.now())) + 2000);
+    const portrait = page.locator(".portrait-2d");
+    const mouth = (await page
+      .getByRole("button", { name: "Make a cheeky face" })
+      .boundingBox())!;
+    const x = mouth.x + mouth.width / 2 - 25;
+    const y = mouth.y - (mouth.width / 0.26) * 0.22;
+    const input = await context.newCDPSession(page);
+    const finger = (id: number, px: number) => ({
+      id,
+      x: px,
+      y,
+      radiusX: 4,
+      radiusY: 4,
+      force: 1,
+    });
+    await input.send("Input.dispatchTouchEvent", {
+      type: "touchStart",
+      touchPoints: [finger(1, x)],
+    });
+    await page.clock.runFor(32);
+    await expect(portrait).toHaveAttribute("data-hover-mask", "false");
+    // Native touch input must reach Pointer Events; synthetic mouse hover would hide the phone bug.
+    for (let i = 1; i <= 4; i++) {
+      await input.send("Input.dispatchTouchEvent", {
+        type: "touchMove",
+        touchPoints: [finger(1, x + i * 14)],
+      });
+      await page.clock.runFor(32);
+    }
+    await expect(portrait).toHaveAttribute("data-hover-mask", "true");
+    await expect(page.locator(".portrait-song-tooltip")).toBeHidden();
+    expect(
+      (await portrait.locator("canvas").screenshot()).length,
+    ).toBeGreaterThan(20000);
+    await page.screenshot({ path: `output/phone-mask-${reducedMotion}.png` });
+    await input.send("Input.dispatchTouchEvent", {
+      type: "touchEnd",
+      touchPoints: [],
+    });
+    await page.clock.fastForward(1000);
+    await expect(portrait).toHaveAttribute("data-hover-mask", "false");
+    // A second contact cancels the reveal rather than leaving a stuck or jumping brush.
+    await input.send("Input.dispatchTouchEvent", {
+      type: "touchStart",
+      touchPoints: [finger(1, x)],
+    });
+    await input.send("Input.dispatchTouchEvent", {
+      type: "touchMove",
+      touchPoints: [finger(1, x + 20)],
+    });
+    await page.clock.runFor(32);
+    await expect(portrait).toHaveAttribute("data-hover-mask", "true");
+    await input.send("Input.dispatchTouchEvent", {
+      type: "touchStart",
+      touchPoints: [finger(1, x + 20), finger(2, x + 55)],
+    });
+    await page.clock.runFor(32);
+    await expect(portrait).toHaveAttribute("data-hover-mask", "false");
+    await input.send("Input.dispatchTouchEvent", {
+      type: "touchCancel",
+      touchPoints: [],
+    });
+    // The next fresh gesture works, and cancellation immediately clears it.
+    await input.send("Input.dispatchTouchEvent", {
+      type: "touchStart",
+      touchPoints: [finger(3, x)],
+    });
+    await input.send("Input.dispatchTouchEvent", {
+      type: "touchMove",
+      touchPoints: [finger(3, x + 20)],
+    });
+    await page.clock.runFor(32);
+    await expect(portrait).toHaveAttribute("data-hover-mask", "true");
+    await input.send("Input.dispatchTouchEvent", {
+      type: "touchCancel",
+      touchPoints: [],
+    });
+    await page.clock.runFor(32);
+    await expect(portrait).toHaveAttribute("data-hover-mask", "false");
+    await page
+      .getByRole("button", { name: "Take headphones off" })
+      .first()
+      .tap();
+    await page.clock.runFor(32);
+    await expect(portrait).toHaveAttribute("data-headphones", "off");
+    await expect(portrait).toHaveAttribute("data-hover-mask", "false");
+    expect(errors).toEqual([]);
+    await context.close();
+  });
+}

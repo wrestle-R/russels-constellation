@@ -1127,6 +1127,7 @@ svg {
 .portrait-2d > canvas {
   position: relative;
   z-index: 1;
+  touch-action: none;
 }
 
 .universe[data-view="2D"] .song-details {
