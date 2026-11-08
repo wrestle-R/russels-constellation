@@ -16,6 +16,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" data-theme="dark" suppressHydrationWarning>
       <body>
+        <Script src="/external-links.js" strategy="afterInteractive" />
         <ThemeProvider>{children}</ThemeProvider>
         <Script src="https://admin-rdp.vercel.app/tracker.js" strategy="afterInteractive" />
       </body>
