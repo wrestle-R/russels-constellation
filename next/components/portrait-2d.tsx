@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
 import * as THREE from "three";
+import { createPortraitAudio } from "../lib/portrait-audio";
 import { createPortraitHover } from "../lib/portrait-hover";
 import { stepHeadphones } from "../lib/portrait-motion";
 import {
@@ -72,6 +73,7 @@ export default function Portrait2D({
   const [attempt, setAttempt] = useState(0);
   useEffect(() => {
     const container = host.current!;
+    const revealAudio = createPortraitAudio();
     let alive = true,
       frame = 0;
     let renderer: THREE.WebGLRenderer | undefined;
@@ -1059,6 +1061,7 @@ export default function Portrait2D({
           Boolean(maskPlane) && !signatureActive && !tongueActive && !active,
         );
         if (maskPlane) maskPlane.visible = maskActive;
+        revealAudio.update(maskActive && document.hasFocus());
         if (container.dataset.hoverMask !== String(maskActive))
           container.dataset.hoverMask = String(maskActive);
         uniforms.light.value = 0;
@@ -1077,6 +1080,7 @@ export default function Portrait2D({
     });
     return () => {
       alive = false;
+      revealAudio.dispose();
       cancelAnimationFrame(frame);
       observer?.disconnect();
       removeEvents();
