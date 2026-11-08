@@ -1,6 +1,6 @@
 import { test, expect } from "@playwright/test";
 
-test("guitar MP3 decodes, follows the reveal, and stops on navigation", async ({
+test("guitar follows headphone state, survives reveal fade, and stops on navigation", async ({
   page,
 }) => {
   await page.addInitScript(() => {
@@ -39,6 +39,7 @@ test("guitar MP3 decodes, follows the reveal, and stops on navigation", async ({
         paused: a?.paused,
         ready: a?.readyState,
         duration: a?.duration,
+        time: a?.currentTime,
         error: a?.error?.code,
         loop: a?.loop,
       };
@@ -51,8 +52,25 @@ test("guitar MP3 decodes, follows the reveal, and stops on navigation", async ({
   expect((await status()).error).toBeUndefined();
   expect((await status()).loop).toBe(true);
   await page.clock.runFor(1000);
+  // Reveal fades, but headphones still keep the music playing.
+  await expect(page.locator(".portrait-2d")).toHaveAttribute(
+    "data-hover-mask",
+    "false",
+  );
+  await expect.poll(async () => (await status()).paused).toBe(false);
+  await page
+    .getByRole("button", { name: "Take headphones off" })
+    .first()
+    .click();
+  await page.clock.runFor(32);
   await expect.poll(async () => (await status()).paused).toBe(true);
-  await page.mouse.move(x + 3, y);
+  const pausedAt = (await status()).time!;
+  await page.clock.runFor(1000);
+  expect((await status()).time).toBe(pausedAt);
+  await page
+    .getByRole("button", { name: "Put headphones back on" })
+    .first()
+    .click();
   await page.clock.runFor(32);
   await expect.poll(async () => (await status()).paused).toBe(false);
   await page.getByRole("link", { name: /3D/ }).click();

@@ -1,4 +1,4 @@
-// Lazy media playback: never fetch or start sound before a reveal.
+// Headphone playback, unlocked by the first visitor interaction.
 export function createPortraitAudio() {
   let audio: HTMLAudioElement | undefined;
   let active = false;
@@ -9,12 +9,11 @@ export function createPortraitAudio() {
     attempted = false;
     if (audio) {
       audio.pause();
-      audio.currentTime = 0;
     }
   };
   const play = () => {
     if (!active || disposed || document.hidden || attempted) return;
-    audio ??= new Audio("/audio/spider-man-guitar.mp3");
+    audio ??= new Audio("/audio/spider-man-guitar.mp3?v=2");
     audio.loop = true;
     audio.volume = 0.35;
     attempted = true;
@@ -39,8 +38,8 @@ export function createPortraitAudio() {
   document.addEventListener("visibilitychange", hide);
   window.addEventListener("blur", stop);
   return {
-    update(visible: boolean) {
-      if (!visible) {
+    update(headphonesOn: boolean) {
+      if (!headphonesOn) {
         if (active) stop();
         return;
       }

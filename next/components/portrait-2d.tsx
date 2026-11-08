@@ -1061,7 +1061,9 @@ export default function Portrait2D({
           Boolean(maskPlane) && !signatureActive && !tongueActive && !active,
         );
         if (maskPlane) maskPlane.visible = maskActive;
-        revealAudio.update(maskActive && document.hasFocus());
+        revealAudio.update(
+          !options.current.headphonesOff && document.hasFocus(),
+        );
         if (container.dataset.hoverMask !== String(maskActive))
           container.dataset.hoverMask = String(maskActive);
         uniforms.light.value = 0;
